@@ -54,6 +54,7 @@ export default function Match() {
   const [winner, setWinner] = useState<PlayerColor | null>(null);
   const [killedIds, setKilledIds] = useState<Set<string>>(new Set());
   const [animating, setAnimating] = useState(false);
+  const movingRef = useRef(false);
   const consecutiveSixes = useRef(0);
 
   const play = useSounds(soundOn);
