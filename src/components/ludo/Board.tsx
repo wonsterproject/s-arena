@@ -1,0 +1,248 @@
+import { Star } from "lucide-react";
+import {
+  CENTER,
+  HOME_BASE,
+  HOME_PATHS,
+  MAIN_PATH,
+  PLAYER_HEX,
+  PlayerColor,
+  PLAYERS,
+  SAFE_TILES,
+  Token,
+  getTokenCell,
+  tileKey,
+} from "@/game/ludoConstants";
+
+interface BoardProps {
+  tokens: Token[];
+  currentPlayer: PlayerColor;
+  movableTokenIds: Set<string>;
+  onTokenClick: (id: string) => void;
+  killedTokenIds: Set<string>;
+}
+
+const SIZE = 15;
+
+// Quadrant colors for home base areas
+const QUADRANT: Record<PlayerColor, { area: string; rows: [number, number]; cols: [number, number] }> = {
+  red:    { area: "red",    rows: [0, 5], cols: [0, 5] },
+  blue:   { area: "blue",   rows: [0, 5], cols: [9, 14] },
+  green:  { area: "green",  rows: [9, 14], cols: [9, 14] },
+  yellow: { area: "yellow", rows: [9, 14], cols: [0, 5] },
+};
+
+function isMainPathCell(r: number, c: number): boolean {
+  return MAIN_PATH.some(([rr, cc]) => rr === r && cc === c);
+}
+
+function homeColorOfCell(r: number, c: number): PlayerColor | null {
+  for (const p of PLAYERS) {
+    if (HOME_PATHS[p].some(([rr, cc]) => rr === r && cc === c)) return p;
+  }
+  return null;
+}
+
+export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, killedTokenIds }: BoardProps) {
+  // Group tokens by cell
+  const cellMap = new Map<string, Token[]>();
+  tokens.forEach((t) => {
+    const [r, c] = getTokenCell(t);
+    const k = tileKey(r, c);
+    const arr = cellMap.get(k) ?? [];
+    arr.push(t);
+    cellMap.set(k, arr);
+  });
+
+  return (
+    <div
+      className="relative aspect-square w-full max-w-[640px] rounded-3xl bg-board p-3 neon-border"
+      role="grid"
+      aria-label="Ludo board"
+    >
+      <div
+        className="relative grid h-full w-full overflow-hidden rounded-2xl"
+        style={{
+          gridTemplateColumns: `repeat(${SIZE}, 1fr)`,
+          gridTemplateRows: `repeat(${SIZE}, 1fr)`,
+          gap: "1px",
+          background: "hsl(var(--tile-line))",
+        }}
+      >
+        {/* Quadrant home areas */}
+        {PLAYERS.map((p) => {
+          const q = QUADRANT[p];
+          return (
+            <div
+              key={`q-${p}`}
+              className="pointer-events-none"
+              style={{
+                gridColumn: `${q.cols[0] + 1} / span 6`,
+                gridRow: `${q.rows[0] + 1} / span 6`,
+                background: `linear-gradient(135deg, ${PLAYER_HEX[p]}, ${PLAYER_HEX[p]}cc)`,
+                position: "relative",
+              }}
+            >
+              <div
+                className="absolute inset-[14%] rounded-xl"
+                style={{
+                  background: "hsl(var(--board))",
+                  boxShadow: `inset 0 0 0 2px ${PLAYER_HEX[p]}`,
+                }}
+              />
+            </div>
+          );
+        })}
+
+        {/* Tiles */}
+        {Array.from({ length: SIZE * SIZE }).map((_, idx) => {
+          const r = Math.floor(idx / SIZE);
+          const c = idx % SIZE;
+          const onMain = isMainPathCell(r, c);
+          const homeColor = homeColorOfCell(r, c);
+          const isCenter = r === CENTER[0] && c === CENTER[1];
+          const isSafe = SAFE_TILES.has(tileKey(r, c));
+
+          // Skip rendering inside quadrants (already drawn)
+          const inQuadrant = PLAYERS.some((p) => {
+            const q = QUADRANT[p];
+            return r >= q.rows[0] && r <= q.rows[1] && c >= q.cols[0] && c <= q.cols[1];
+          });
+          if (inQuadrant) return null;
+
+          let bg = "hsl(var(--tile))";
+          if (homeColor) {
+            bg = `${PLAYER_HEX[homeColor]}`;
+          } else if (onMain) {
+            bg = "hsl(230 18% 17%)";
+          }
+
+          return (
+            <div
+              key={`t-${r}-${c}`}
+              className="relative"
+              style={{
+                gridColumn: c + 1,
+                gridRow: r + 1,
+                background: bg,
+              }}
+            >
+              {isSafe && !homeColor && (
+                <Star
+                  className="absolute inset-0 m-auto h-3/5 w-3/5 opacity-60"
+                  style={{ color: "hsl(var(--accent))" }}
+                  fill="currentColor"
+                  strokeWidth={1}
+                />
+              )}
+              {isCenter && (
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background:
+                      "conic-gradient(hsl(var(--red)) 0 25%, hsl(var(--blue)) 25% 50%, hsl(var(--green)) 50% 75%, hsl(var(--yellow)) 75% 100%)",
+                  }}
+                />
+              )}
+            </div>
+          );
+        })}
+
+        {/* Center decoration overlay (3x3) */}
+        <div
+          className="pointer-events-none flex items-center justify-center"
+          style={{ gridColumn: "7 / span 3", gridRow: "7 / span 3" }}
+        >
+          <div className="text-2xl font-black text-glow opacity-90">★</div>
+        </div>
+
+        {/* Tokens overlay (absolute over whole grid) */}
+        <div className="pointer-events-none absolute inset-0">
+          <div
+            className="grid h-full w-full"
+            style={{
+              gridTemplateColumns: `repeat(${SIZE}, 1fr)`,
+              gridTemplateRows: `repeat(${SIZE}, 1fr)`,
+            }}
+          >
+            {/* Render base slots (visual circles) */}
+            {PLAYERS.flatMap((p) =>
+              HOME_BASE[p].map(([r, c], i) => (
+                <div
+                  key={`base-${p}-${i}`}
+                  className="flex items-center justify-center"
+                  style={{ gridColumn: c + 1, gridRow: r + 1 }}
+                >
+                  <div
+                    className="h-[78%] w-[78%] rounded-full"
+                    style={{
+                      background: "hsl(var(--board))",
+                      boxShadow: `inset 0 0 0 2px ${PLAYER_HEX[p]}aa`,
+                    }}
+                  />
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Tokens themselves */}
+          {Array.from(cellMap.entries()).map(([key, group]) => {
+            const [r, c] = key.split(",").map(Number);
+            return (
+              <div
+                key={`cell-${key}`}
+                className="absolute flex items-center justify-center"
+                style={{
+                  left: `${(c / SIZE) * 100}%`,
+                  top: `${(r / SIZE) * 100}%`,
+                  width: `${100 / SIZE}%`,
+                  height: `${100 / SIZE}%`,
+                }}
+              >
+                <div className="relative h-full w-full">
+                  {group.map((t, i) => {
+                    const movable = movableTokenIds.has(t.id);
+                    const killed = killedTokenIds.has(t.id);
+                    const offset = group.length > 1 ? (i - (group.length - 1) / 2) * 18 : 0;
+                    const offsetY = group.length > 1 ? (i % 2 === 0 ? -4 : 4) : 0;
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => movable && onTokenClick(t.id)}
+                        disabled={!movable}
+                        className={`pointer-events-auto absolute left-1/2 top-1/2 flex items-center justify-center rounded-full transition-all duration-300 animate-token-pop ${
+                          movable ? "cursor-pointer animate-tile-highlight" : "cursor-default"
+                        } ${killed ? "animate-kill" : ""}`}
+                        style={{
+                          width: "70%",
+                          height: "70%",
+                          transform: `translate(calc(-50% + ${offset}%), calc(-50% + ${offsetY}%)) ${
+                            movable ? "scale(1.05)" : ""
+                          }`,
+                          background: `radial-gradient(circle at 30% 25%, hsl(0 0% 100% / 0.8), ${PLAYER_HEX[t.player]} 60%)`,
+                          boxShadow: `0 4px 10px hsl(0 0% 0% / 0.5), 0 0 0 2px hsl(0 0% 100% / 0.2) inset, ${
+                            movable ? `0 0 14px ${PLAYER_HEX[t.player]}` : ""
+                          }`,
+                          zIndex: 10 + i,
+                        }}
+                        aria-label={`${t.player} token`}
+                      >
+                        <span
+                          className="block rounded-full"
+                          style={{
+                            width: "30%",
+                            height: "30%",
+                            background: "hsl(0 0% 100% / 0.55)",
+                          }}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
