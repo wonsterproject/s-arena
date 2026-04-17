@@ -1,4 +1,5 @@
 import { Star } from "lucide-react";
+import { ReactNode } from "react";
 import {
   CENTER,
   HOME_BASE,
@@ -19,11 +20,14 @@ interface BoardProps {
   movableTokenIds: Set<string>;
   onTokenClick: (id: string) => void;
   killedTokenIds: Set<string>;
+  /** Optional content rendered in the central 3x3 zone (e.g. dice). */
+  centerContent?: ReactNode;
+  /** Optional username overlays on each home base quadrant. */
+  playerNames?: Partial<Record<PlayerColor, string>>;
 }
 
 const SIZE = 15;
 
-// Quadrant colors for home base areas
 const QUADRANT: Record<PlayerColor, { area: string; rows: [number, number]; cols: [number, number] }> = {
   red:    { area: "red",    rows: [0, 5], cols: [0, 5] },
   blue:   { area: "blue",   rows: [0, 5], cols: [9, 14] },
@@ -42,8 +46,7 @@ function homeColorOfCell(r: number, c: number): PlayerColor | null {
   return null;
 }
 
-export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, killedTokenIds }: BoardProps) {
-  // Group tokens by cell
+export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, killedTokenIds, centerContent, playerNames }: BoardProps) {
   const cellMap = new Map<string, Token[]>();
   tokens.forEach((t) => {
     const [r, c] = getTokenCell(t);
@@ -55,7 +58,7 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
 
   return (
     <div
-      className="relative aspect-square w-full max-w-[640px] rounded-3xl bg-board p-3 neon-border"
+      className="relative aspect-square w-full max-w-[840px] rounded-3xl bg-board p-3 neon-border"
       role="grid"
       aria-label="Ludo board"
     >
@@ -71,6 +74,7 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
         {/* Quadrant home areas */}
         {PLAYERS.map((p) => {
           const q = QUADRANT[p];
+          const isActive = p === currentPlayer;
           return (
             <div
               key={`q-${p}`}
@@ -80,6 +84,7 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
                 gridRow: `${q.rows[0] + 1} / span 6`,
                 background: `linear-gradient(135deg, ${PLAYER_HEX[p]}, ${PLAYER_HEX[p]}cc)`,
                 position: "relative",
+                boxShadow: isActive ? `inset 0 0 0 4px hsl(0 0% 100% / 0.55), inset 0 0 40px ${PLAYER_HEX[p]}` : undefined,
               }}
             >
               <div
@@ -89,6 +94,19 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
                   boxShadow: `inset 0 0 0 2px ${PLAYER_HEX[p]}`,
                 }}
               />
+              {playerNames?.[p] && (
+                <div
+                  className="absolute left-1/2 top-2 -translate-x-1/2 px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-black tracking-wide whitespace-nowrap max-w-[90%] truncate"
+                  style={{
+                    background: "hsl(var(--background) / 0.7)",
+                    color: PLAYER_HEX[p],
+                    backdropFilter: "blur(6px)",
+                    boxShadow: `0 0 0 1px ${PLAYER_HEX[p]}55`,
+                  }}
+                >
+                  {playerNames[p]}
+                </div>
+              )}
             </div>
           );
         })}
@@ -102,7 +120,6 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
           const isCenter = r === CENTER[0] && c === CENTER[1];
           const isSafe = SAFE_TILES.has(tileKey(r, c));
 
-          // Skip rendering inside quadrants (already drawn)
           const inQuadrant = PLAYERS.some((p) => {
             const q = QUADRANT[p];
             return r >= q.rows[0] && r <= q.rows[1] && c >= q.cols[0] && c <= q.cols[1];
@@ -147,15 +164,15 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
           );
         })}
 
-        {/* Center decoration overlay (3x3) */}
+        {/* Center content (dice / decoration) */}
         <div
-          className="pointer-events-none flex items-center justify-center"
+          className="pointer-events-auto flex items-center justify-center z-20"
           style={{ gridColumn: "7 / span 3", gridRow: "7 / span 3" }}
         >
-          <div className="text-2xl font-black text-glow opacity-90">★</div>
+          {centerContent ?? <div className="text-2xl font-black text-glow opacity-90">★</div>}
         </div>
 
-        {/* Tokens overlay (absolute over whole grid) */}
+        {/* Tokens overlay */}
         <div className="pointer-events-none absolute inset-0">
           <div
             className="grid h-full w-full"
@@ -164,7 +181,6 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
               gridTemplateRows: `repeat(${SIZE}, 1fr)`,
             }}
           >
-            {/* Render base slots (visual circles) */}
             {PLAYERS.flatMap((p) =>
               HOME_BASE[p].map(([r, c], i) => (
                 <div
@@ -184,7 +200,6 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
             )}
           </div>
 
-          {/* Tokens themselves */}
           {Array.from(cellMap.entries()).map(([key, group]) => {
             const [r, c] = key.split(",").map(Number);
             return (
