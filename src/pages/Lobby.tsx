@@ -149,22 +149,9 @@ export default function Lobby() {
     if (!user || !profile) return;
     setCreating(true);
     try {
-      const { data: m, error } = await supabase
-        .from("matches")
-        .insert({ host_id: user.id, mode: "bot", status: "active" })
-        .select()
-        .single();
-      if (error || !m) throw error;
-      const colors: Array<"red" | "blue" | "green" | "yellow"> = ["red", "blue", "green", "yellow"];
-      const rows = [
-        { match_id: m.id, user_id: user.id, is_bot: false, color: colors[0], team: 0, ready: true },
-        { match_id: m.id, user_id: null, is_bot: true, bot_name: "Bot Alpha", color: colors[1], team: 1, ready: true },
-        { match_id: m.id, user_id: null, is_bot: true, bot_name: "Bot Bravo", color: colors[2], team: 2, ready: true },
-        { match_id: m.id, user_id: null, is_bot: true, bot_name: "Bot Charlie", color: colors[3], team: 3, ready: true },
-      ];
-      const { error: e2 } = await supabase.from("match_players").insert(rows);
-      if (e2) throw e2;
-      navigate(`/match/${m.id}`);
+      const { data: matchId, error } = await supabase.rpc("create_bot_match");
+      if (error || !matchId) throw error ?? new Error("No match id returned");
+      navigate(`/match/${matchId}`);
     } catch (err: any) {
       toast({ title: "Failed to start", description: err?.message ?? "Try again", variant: "destructive" });
     } finally {
