@@ -407,12 +407,56 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
       accept_match_invite: { Args: { _invite_id: string }; Returns: string }
+      admin_grant_item: {
+        Args: { _item_id: string; _user_id: string }
+        Returns: undefined
+      }
+      admin_set_role: {
+        Args: {
+          _grant: boolean
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      admin_update_profile: {
+        Args: {
+          _coins?: number
+          _display_name?: string
+          _losses?: number
+          _user_id: string
+          _username?: string
+          _wins?: number
+        }
+        Returns: undefined
+      }
       claim_daily_reward: {
         Args: never
         Returns: {
@@ -428,6 +472,13 @@ export type Database = {
           _opponent: string
         }
         Returns: string
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
       }
       is_match_participant: {
         Args: { _match_id: string; _user: string }
@@ -446,6 +497,7 @@ export type Database = {
       }
     }
     Enums: {
+      app_role: "admin" | "moderator" | "user"
       friend_request_status: "pending" | "accepted" | "declined"
       invite_status: "pending" | "accepted" | "declined" | "cancelled"
       match_mode: "bot" | "1v1" | "2v2" | "1v2" | "custom" | "random"
@@ -584,6 +636,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "moderator", "user"],
       friend_request_status: ["pending", "accepted", "declined"],
       invite_status: ["pending", "accepted", "declined", "cancelled"],
       match_mode: ["bot", "1v1", "2v2", "1v2", "custom", "random"],

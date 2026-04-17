@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LogOut, Settings, Coins, Trophy, UserPlus, Users, Bot, Shuffle, Swords,
-  Check, X, Search, Loader2, Send, Crown, ShoppingBag, User
+  Check, X, Search, Loader2, Send, Crown, ShoppingBag, User, ShieldCheck
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { toast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 
@@ -40,6 +41,7 @@ interface MatchInvite {
 export default function Lobby() {
   const navigate = useNavigate();
   const { user, profile, signOut, refreshProfile } = useAuth();
+  const { isAdmin } = useIsAdmin();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [incoming, setIncoming] = useState<FriendRequest[]>([]);
   const [outgoing, setOutgoing] = useState<FriendRequest[]>([]);
@@ -247,6 +249,11 @@ export default function Lobby() {
           <button onClick={() => navigate("/profile")} className="glass-btn h-10 w-10 !p-0 flex items-center justify-center" aria-label="Profile">
             <User className="h-4 w-4" />
           </button>
+          {isAdmin && (
+            <button onClick={() => navigate("/admin")} className="glass-btn h-10 w-10 !p-0 flex items-center justify-center text-primary" aria-label="Admin">
+              <ShieldCheck className="h-4 w-4" />
+            </button>
+          )}
           <button onClick={async () => { await signOut(); navigate("/login"); }} className="glass-btn h-10 flex items-center gap-2">
             <LogOut className="h-4 w-4" />
             <span className="hidden sm:inline text-sm">Logout</span>
