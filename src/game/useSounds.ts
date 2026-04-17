@@ -18,6 +18,9 @@ export function useSounds(enabled: boolean) {
     (name: SoundName) => {
       if (!enabled) return;
       const ctx = getCtx();
+      if (ctx.state === "suspended") {
+        void ctx.resume();
+      }
       const now = ctx.currentTime;
 
       const tone = (freq: number, dur: number, type: OscillatorType, gain = 0.18, when = 0) => {
