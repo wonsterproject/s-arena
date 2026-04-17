@@ -45,11 +45,12 @@ export const START_INDEX: Record<PlayerColor, number> = {
 // Red enters home col after passing index (START + 50) and goes into home row.
 // We handle by: position 0..50 = loop offset from start; 51..56 = home col tiles (6); 57 = center.
 
+// 5 colored "arm" tiles + the center (finish). progress: 51..55 = arm tiles, 56 = center.
 export const HOME_PATHS: Record<PlayerColor, [number, number][]> = {
-  red:    [[7, 1], [7, 2], [7, 3], [7, 4], [7, 5], [7, 6]],
-  blue:   [[1, 7], [2, 7], [3, 7], [4, 7], [5, 7], [6, 7]],
-  green:  [[7, 13], [7, 12], [7, 11], [7, 10], [7, 9], [7, 8]],
-  yellow: [[13, 7], [12, 7], [11, 7], [10, 7], [9, 7], [8, 7]],
+  red:    [[7, 1], [7, 2], [7, 3], [7, 4], [7, 5]],
+  blue:   [[1, 7], [2, 7], [3, 7], [4, 7], [5, 7]],
+  green:  [[7, 13], [7, 12], [7, 11], [7, 10], [7, 9]],
+  yellow: [[13, 7], [12, 7], [11, 7], [10, 7], [9, 7]],
 };
 
 export const CENTER: [number, number] = [7, 7];
@@ -96,8 +97,11 @@ export function getTokenCell(token: Token): [number, number] {
     const idx = (START_INDEX[token.player] + token.progress) % MAIN_PATH.length;
     return MAIN_PATH[idx];
   }
-  // home column
-  const homeIdx = token.progress - 51; // 0..5
+  if (token.progress >= 56) {
+    return CENTER;
+  }
+  // home column arms: progress 51..55 -> home arm index 0..4
+  const homeIdx = token.progress - 51;
   return HOME_PATHS[token.player][homeIdx];
 }
 
