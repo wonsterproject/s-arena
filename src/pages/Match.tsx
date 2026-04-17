@@ -54,6 +54,7 @@ export default function Match() {
   const [winner, setWinner] = useState<PlayerColor | null>(null);
   const [killedIds, setKilledIds] = useState<Set<string>>(new Set());
   const [animating, setAnimating] = useState(false);
+  const movingRef = useRef(false);
   const consecutiveSixes = useRef(0);
 
   const play = useSounds(soundOn);
@@ -163,22 +164,24 @@ export default function Match() {
   }, [rolling, animating, winner, hasRolled, play, currentPlayer, endTurn]);
 
   const moveToken = useCallback(async (id: string) => {
+    if (movingRef.current) return;
     const token = tokens.find((t) => t.id === id);
     if (!token) return;
+    const stepsToMove = diceValue; // snapshot before any state changes
+    movingRef.current = true;
     setAnimating(true);
 
     const updated: Token[] = tokens.map((t) => ({ ...t }));
     const t = updated.find((x) => x.id === id)!;
 
-    if (t.state === "base" && diceValue === 6) {
+    if (t.state === "base" && stepsToMove === 6) {
       t.state = "active";
       t.progress = 0;
       play("move");
       setTokens([...updated]);
       await new Promise((r) => setTimeout(r, 250));
     } else if (t.state === "active") {
-      const steps = diceValue;
-      for (let i = 0; i < steps; i++) {
+      for (let i = 0; i < stepsToMove; i++) {
         t.progress += 1;
         setTokens([...updated]);
         play("move");
@@ -215,11 +218,13 @@ export default function Match() {
       confetti({ particleCount: 200, spread: 80, origin: { y: 0.5 } });
       void recordResult(t.player);
       setAnimating(false);
+      movingRef.current = false;
       return;
     }
 
     setAnimating(false);
-    const extra = diceValue === 6 || killed || t.state === "finished";
+    movingRef.current = false;
+    const extra = stepsToMove === 6 || killed || t.state === "finished";
     endTurn(extra);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tokens, diceValue, play, endTurn]);
