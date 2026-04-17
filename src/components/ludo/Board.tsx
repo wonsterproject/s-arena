@@ -154,9 +154,7 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
               {isCenter && (
                 <div
                   className="absolute inset-0"
-                  style={{
-                    background: `conic-gradient(from 0deg, ${PLAYER_HEX.red} 0deg 90deg, ${PLAYER_HEX.blue} 90deg 180deg, ${PLAYER_HEX.green} 180deg 270deg, ${PLAYER_HEX.yellow} 270deg 360deg)`,
-                  }}
+                  style={{ background: "hsl(0 0% 0%)" }}
                 />
               )}
             </div>
@@ -168,10 +166,7 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
           className="pointer-events-auto relative flex items-center justify-center z-20"
           style={{ gridColumn: "7 / span 3", gridRow: "7 / span 3" }}
         >
-          <div className="absolute inset-0" style={{ background: "hsl(0 0% 0%)" }} />
-          <div className="relative z-10 flex items-center justify-center w-full h-full">
-            {centerContent ?? <div className="text-2xl font-black text-glow opacity-90">★</div>}
-          </div>
+          {centerContent ?? <div className="text-2xl font-black text-glow opacity-90">★</div>}
         </div>
 
         {/* Tokens overlay */}
