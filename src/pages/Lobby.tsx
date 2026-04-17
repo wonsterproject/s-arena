@@ -159,8 +159,66 @@ export default function Lobby() {
     }
   };
 
-  const comingSoon = (name: string) =>
-    toast({ title: `${name} coming soon`, description: "Online multiplayer is being set up. Try Bot match for now!" });
+  const startRandomMatch = async (mode: "1v1" | "2v2" | "random") => {
+    if (!user) return;
+    setCreating(true);
+    try {
+      const { data: matchId, error } = await supabase.rpc("join_or_create_match", { _mode: mode });
+      if (error) throw error;
+      if (matchId) {
+        navigate(`/match/${matchId}`);
+      } else {
+        toast({ title: "Searching for opponents...", description: "You'll be matched when more players join." });
+        const ch = supabase
+          .channel(`mm-${user.id}`)
+          .on("postgres_changes", { event: "INSERT", schema: "public", table: "match_players", filter: `user_id=eq.${user.id}` },
+            (payload) => {
+              const mid = (payload.new as any).match_id;
+              supabase.removeChannel(ch);
+              navigate(`/match/${mid}`);
+            })
+          .subscribe();
+        setTimeout(() => supabase.removeChannel(ch), 60000);
+      }
+    } catch (err: any) {
+      toast({ title: "Failed", description: err?.message ?? "Try again", variant: "destructive" });
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const inviteFriend = async (friendId: string, mode: "1v1" | "2v2") => {
+    if (!user) return;
+    setCreating(true);
+    try {
+      const { data: matchId, error } = await supabase.rpc("create_friend_match", { _mode: mode, _opponent: friendId });
+      if (error || !matchId) throw error ?? new Error("Failed");
+      toast({ title: "Invite sent! Waiting for friend..." });
+      navigate(`/match/${matchId}`);
+    } catch (err: any) {
+      toast({ title: "Failed", description: err?.message ?? "Try again", variant: "destructive" });
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const acceptInvite = async (inviteId: string) => {
+    setCreating(true);
+    try {
+      const { data: matchId, error } = await supabase.rpc("accept_match_invite", { _invite_id: inviteId });
+      if (error || !matchId) throw error ?? new Error("Failed");
+      navigate(`/match/${matchId}`);
+    } catch (err: any) {
+      toast({ title: "Failed", description: err?.message ?? "Try again", variant: "destructive" });
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const declineInvite = async (inviteId: string) => {
+    await supabase.from("match_invites").update({ status: "declined" }).eq("id", inviteId);
+    loadInvites();
+  };
 
   const initials = (s?: string | null) => (s ?? "?").slice(0, 2).toUpperCase();
 
