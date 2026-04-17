@@ -97,8 +97,11 @@ export function getTokenCell(token: Token): [number, number] {
     const idx = (START_INDEX[token.player] + token.progress) % MAIN_PATH.length;
     return MAIN_PATH[idx];
   }
-  // home column
-  const homeIdx = token.progress - 51; // 0..5
+  if (token.progress >= 56) {
+    return CENTER;
+  }
+  // home column arms: progress 51..55 -> home arm index 0..4
+  const homeIdx = token.progress - 51;
   return HOME_PATHS[token.player][homeIdx];
 }
 
