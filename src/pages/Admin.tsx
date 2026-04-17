@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Search, Save, ShieldCheck, ShieldOff, Gift, ArrowLeft, Coins, Trophy, Swords } from "lucide-react";
+import { Loader2, Search, Save, ShieldCheck, ShieldOff, Gift, ArrowLeft, Coins, Trophy, Swords, Wallet, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { toast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import PaymentRequestsPanel from "@/components/admin/PaymentRequestsPanel";
 
 interface PlayerRow {
   id: string;
@@ -36,6 +37,8 @@ export default function Admin() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [shopItems, setShopItems] = useState<ShopItem[]>([]);
   const [grantTarget, setGrantTarget] = useState<string | null>(null);
+  const [tab, setTab] = useState<"players" | "payments">("players");
+  const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
     if (authLoading || roleLoading) return;
