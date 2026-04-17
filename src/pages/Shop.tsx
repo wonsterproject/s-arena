@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Coins, Loader2, Check, Lock, Gift, Flame } from "lucide-react";
+import { ArrowLeft, Coins, Loader2, Check, Lock, Gift, Flame, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
+import CoinsPanel from "@/components/shop/CoinsPanel";
 
 interface ShopItem {
   id: string;
@@ -85,6 +86,14 @@ export default function Shop() {
           <span className="text-sm font-bold">{profile?.coins ?? 0}</span>
         </div>
       </header>
+
+      <section className="mx-auto max-w-5xl mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <Wallet className="h-4 w-4 text-primary" />
+          <h2 className="text-sm uppercase tracking-widest text-muted-foreground">Wallet</h2>
+        </div>
+        <CoinsPanel />
+      </section>
 
       <section className="mx-auto max-w-5xl mb-6">
         <div className="glass rounded-2xl p-5 flex items-center gap-4 neon-border">

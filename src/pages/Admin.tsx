@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Search, Save, ShieldCheck, ShieldOff, Gift, ArrowLeft, Coins, Trophy, Swords } from "lucide-react";
+import { Loader2, Search, Save, ShieldCheck, ShieldOff, Gift, ArrowLeft, Coins, Trophy, Swords, Wallet, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { toast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import PaymentRequestsPanel from "@/components/admin/PaymentRequestsPanel";
 
 interface PlayerRow {
   id: string;
@@ -36,6 +37,8 @@ export default function Admin() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [shopItems, setShopItems] = useState<ShopItem[]>([]);
   const [grantTarget, setGrantTarget] = useState<string | null>(null);
+  const [tab, setTab] = useState<"players" | "payments">("players");
+  const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
     if (authLoading || roleLoading) return;
@@ -54,15 +57,17 @@ export default function Admin() {
 
   const loadAll = async () => {
     setLoading(true);
-    const [{ data: profs }, { data: roles }, { data: items }] = await Promise.all([
+    const [{ data: profs }, { data: roles }, { data: items }, { count }] = await Promise.all([
       supabase.from("profiles").select("id, username, display_name, coins, wins, losses").order("coins", { ascending: false }).limit(500),
       supabase.from("user_roles").select("user_id").eq("role", "admin"),
       supabase.from("shop_items").select("id, name, price_coins").order("price_coins"),
+      supabase.from("payment_requests").select("*", { count: "exact", head: true }).eq("status", "pending"),
     ]);
     const adminSet = new Set<string>((roles ?? []).map((r: any) => r.user_id));
     setAdminIds(adminSet);
     setPlayers((profs ?? []).map((p: any) => ({ ...p, is_admin: adminSet.has(p.id) })));
     setShopItems((items ?? []) as ShopItem[]);
+    setPendingCount(count ?? 0);
     setLoading(false);
   };
 
@@ -157,6 +162,31 @@ export default function Admin() {
         <div className="w-24" />
       </header>
 
+      <div className="mx-auto max-w-6xl flex gap-2 mb-4">
+        <button
+          onClick={() => setTab("players")}
+          className={`glass-btn h-10 px-4 flex items-center gap-2 text-sm ${tab === "players" ? "bg-gradient-to-r from-primary/40 to-accent/40" : ""}`}
+        >
+          <Users className="h-4 w-4" /> Players
+        </button>
+        <button
+          onClick={() => setTab("payments")}
+          className={`glass-btn h-10 px-4 flex items-center gap-2 text-sm ${tab === "payments" ? "bg-gradient-to-r from-primary/40 to-accent/40" : ""}`}
+        >
+          <Wallet className="h-4 w-4" /> Payments
+          {pendingCount > 0 && (
+            <span className="ml-1 inline-flex items-center justify-center rounded-full bg-yellow-500/30 text-yellow-300 text-[10px] font-black px-2 py-0.5">
+              {pendingCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {tab === "payments" ? (
+        <section className="mx-auto max-w-6xl">
+          <PaymentRequestsPanel />
+        </section>
+      ) : (
       <section className="mx-auto max-w-6xl glass rounded-3xl p-4 neon-border">
         <div className="flex items-center gap-2 mb-4">
           <Search className="h-4 w-4 text-muted-foreground" />
@@ -281,6 +311,7 @@ export default function Admin() {
           </table>
         </div>
       </section>
+      )}
     </main>
   );
 }
