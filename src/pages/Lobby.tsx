@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { toast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
+import BetDialog from "@/components/lobby/BetDialog";
 
 type MatchMode = "bot" | "1v1" | "2v2" | "1v2" | "custom" | "random";
 
@@ -51,6 +52,7 @@ export default function Lobby() {
   const [searching, setSearching] = useState(false);
   const [tab, setTab] = useState<"play" | "friends">("play");
   const [creating, setCreating] = useState(false);
+  const [betDialog, setBetDialog] = useState<{ friend: Friend; mode: "1v1" | "2v2" } | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -189,13 +191,14 @@ export default function Lobby() {
     }
   };
 
-  const inviteFriend = async (friendId: string, mode: "1v1" | "2v2") => {
+  const inviteFriend = async (friendId: string, mode: "1v1" | "2v2", bet: number) => {
     if (!user) return;
     setCreating(true);
     try {
-      const { data: matchId, error } = await supabase.rpc("create_friend_match", { _mode: mode, _opponent: friendId });
+      const { data: matchId, error } = await supabase.rpc("create_friend_match", { _mode: mode, _opponent: friendId, _bet: bet });
       if (error || !matchId) throw error ?? new Error("Failed");
-      toast({ title: "Invite sent! Waiting for friend..." });
+      toast({ title: "Invite sent! Waiting for friend...", description: bet > 0 ? `${bet} coins locked` : undefined });
+      await refreshProfile();
       navigate(`/match/${matchId}`);
     } catch (err: any) {
       toast({ title: "Failed", description: err?.message ?? "Try again", variant: "destructive" });
@@ -442,10 +445,10 @@ export default function Lobby() {
                         <p className="text-sm font-semibold truncate">@{f.username}</p>
                         <p className="text-xs text-muted-foreground">🏆 {f.wins} · 🪙 {f.coins}</p>
                       </div>
-                      <button onClick={() => inviteFriend(f.id, "1v1")} disabled={creating} className="glass-btn h-8 text-xs flex items-center gap-1 bg-primary/30">
+                      <button onClick={() => setBetDialog({ friend: f, mode: "1v1" })} disabled={creating} className="glass-btn h-8 text-xs flex items-center gap-1 bg-primary/30">
                         <Swords className="h-3 w-3" /> 1v1
                       </button>
-                      <button onClick={() => inviteFriend(f.id, "2v2")} disabled={creating} className="glass-btn h-8 text-xs flex items-center gap-1">
+                      <button onClick={() => setBetDialog({ friend: f, mode: "2v2" })} disabled={creating} className="glass-btn h-8 text-xs flex items-center gap-1">
                         <Users className="h-3 w-3" /> 2v2
                       </button>
                     </div>
