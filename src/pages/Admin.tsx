@@ -57,15 +57,17 @@ export default function Admin() {
 
   const loadAll = async () => {
     setLoading(true);
-    const [{ data: profs }, { data: roles }, { data: items }] = await Promise.all([
+    const [{ data: profs }, { data: roles }, { data: items }, { count }] = await Promise.all([
       supabase.from("profiles").select("id, username, display_name, coins, wins, losses").order("coins", { ascending: false }).limit(500),
       supabase.from("user_roles").select("user_id").eq("role", "admin"),
       supabase.from("shop_items").select("id, name, price_coins").order("price_coins"),
+      supabase.from("payment_requests").select("*", { count: "exact", head: true }).eq("status", "pending"),
     ]);
     const adminSet = new Set<string>((roles ?? []).map((r: any) => r.user_id));
     setAdminIds(adminSet);
     setPlayers((profs ?? []).map((p: any) => ({ ...p, is_admin: adminSet.has(p.id) })));
     setShopItems((items ?? []) as ShopItem[]);
+    setPendingCount(count ?? 0);
     setLoading(false);
   };
 
