@@ -50,7 +50,11 @@ export function useSounds(enabled: boolean) {
     [enabled, getCtx]
   );
 
-  useEffect(() => () => ctxRef.current?.close(), []);
+  useEffect(() => {
+    return () => {
+      ctxRef.current?.close();
+    };
+  }, []);
 
   return play;
 }
