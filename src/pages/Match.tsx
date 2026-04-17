@@ -4,6 +4,7 @@ import confetti from "canvas-confetti";
 import { Volume2, VolumeX, RotateCcw, Trophy, ArrowLeft, Loader2 } from "lucide-react";
 import { Board } from "@/components/ludo/Board";
 import { CenterDice } from "@/components/ludo/CenterDice";
+import { MatchChat } from "@/components/ludo/MatchChat";
 import {
   PLAYERS,
   PLAYER_HEX,
@@ -385,6 +386,9 @@ export default function Match() {
             </div>
           </div>
         </div>
+      )}
+      {matchId && seats && seats.some((s) => !s.isBot && s.userId !== user?.id) && (
+        <MatchChat matchId={matchId} />
       )}
     </main>
   );
