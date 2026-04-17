@@ -162,6 +162,31 @@ export default function Admin() {
         <div className="w-24" />
       </header>
 
+      <div className="mx-auto max-w-6xl flex gap-2 mb-4">
+        <button
+          onClick={() => setTab("players")}
+          className={`glass-btn h-10 px-4 flex items-center gap-2 text-sm ${tab === "players" ? "bg-gradient-to-r from-primary/40 to-accent/40" : ""}`}
+        >
+          <Users className="h-4 w-4" /> Players
+        </button>
+        <button
+          onClick={() => setTab("payments")}
+          className={`glass-btn h-10 px-4 flex items-center gap-2 text-sm ${tab === "payments" ? "bg-gradient-to-r from-primary/40 to-accent/40" : ""}`}
+        >
+          <Wallet className="h-4 w-4" /> Payments
+          {pendingCount > 0 && (
+            <span className="ml-1 inline-flex items-center justify-center rounded-full bg-yellow-500/30 text-yellow-300 text-[10px] font-black px-2 py-0.5">
+              {pendingCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {tab === "payments" ? (
+        <section className="mx-auto max-w-6xl">
+          <PaymentRequestsPanel />
+        </section>
+      ) : (
       <section className="mx-auto max-w-6xl glass rounded-3xl p-4 neon-border">
         <div className="flex items-center gap-2 mb-4">
           <Search className="h-4 w-4 text-muted-foreground" />
@@ -286,6 +311,7 @@ export default function Admin() {
           </table>
         </div>
       </section>
+      )}
     </main>
   );
 }
