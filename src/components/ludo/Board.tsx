@@ -165,10 +165,13 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
 
         {/* Center content (dice / decoration) */}
         <div
-          className="pointer-events-auto flex items-center justify-center z-20"
+          className="pointer-events-auto relative flex items-center justify-center z-20"
           style={{ gridColumn: "7 / span 3", gridRow: "7 / span 3" }}
         >
-          {centerContent ?? <div className="text-2xl font-black text-glow opacity-90">★</div>}
+          <div className="absolute inset-0" style={{ background: "hsl(0 0% 0%)" }} />
+          <div className="relative z-10 flex items-center justify-center w-full h-full">
+            {centerContent ?? <div className="text-2xl font-black text-glow opacity-90">★</div>}
+          </div>
         </div>
 
         {/* Tokens overlay */}
