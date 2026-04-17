@@ -275,6 +275,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_bot_match: { Args: never; Returns: string }
       is_match_participant: {
         Args: { _match_id: string; _user: string }
         Returns: boolean
