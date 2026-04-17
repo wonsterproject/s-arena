@@ -236,6 +236,7 @@ export type Database = {
       }
       matches: {
         Row: {
+          bet_amount: number
           created_at: string
           host_id: string
           id: string
@@ -246,6 +247,7 @@ export type Database = {
           winner_id: string | null
         }
         Insert: {
+          bet_amount?: number
           created_at?: string
           host_id: string
           id?: string
@@ -256,6 +258,7 @@ export type Database = {
           winner_id?: string | null
         }
         Update: {
+          bet_amount?: number
           created_at?: string
           host_id?: string
           id?: string
@@ -300,6 +303,78 @@ export type Database = {
           id?: string
           mode?: Database["public"]["Enums"]["match_mode"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      payment_requests: {
+        Row: {
+          admin_note: string | null
+          coins: number
+          created_at: string
+          easypaisa_name: string | null
+          easypaisa_number: string | null
+          id: string
+          kind: Database["public"]["Enums"]["payment_kind"]
+          pkr_amount: number
+          resolved_at: string | null
+          resolved_by: string | null
+          screenshot_url: string | null
+          status: Database["public"]["Enums"]["payment_request_status"]
+          user_id: string
+        }
+        Insert: {
+          admin_note?: string | null
+          coins: number
+          created_at?: string
+          easypaisa_name?: string | null
+          easypaisa_number?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["payment_kind"]
+          pkr_amount: number
+          resolved_at?: string | null
+          resolved_by?: string | null
+          screenshot_url?: string | null
+          status?: Database["public"]["Enums"]["payment_request_status"]
+          user_id: string
+        }
+        Update: {
+          admin_note?: string | null
+          coins?: number
+          created_at?: string
+          easypaisa_name?: string | null
+          easypaisa_number?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["payment_kind"]
+          pkr_amount?: number
+          resolved_at?: string | null
+          resolved_by?: string | null
+          screenshot_url?: string | null
+          status?: Database["public"]["Enums"]["payment_request_status"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      payment_settings: {
+        Row: {
+          easypaisa_name: string
+          easypaisa_number: string
+          id: string
+          singleton: boolean
+          updated_at: string
+        }
+        Insert: {
+          easypaisa_name?: string
+          easypaisa_number?: string
+          id?: string
+          singleton?: boolean
+          updated_at?: string
+        }
+        Update: {
+          easypaisa_name?: string
+          easypaisa_number?: string
+          id?: string
+          singleton?: boolean
+          updated_at?: string
         }
         Relationships: []
       }
@@ -438,6 +513,10 @@ export type Database = {
         Args: { _item_id: string; _user_id: string }
         Returns: undefined
       }
+      admin_resolve_payment_request: {
+        Args: { _approve: boolean; _note?: string; _request_id: string }
+        Returns: undefined
+      }
       admin_set_role: {
         Args: {
           _grant: boolean
@@ -466,12 +545,25 @@ export type Database = {
         }[]
       }
       create_bot_match: { Args: never; Returns: string }
-      create_friend_match: {
-        Args: {
-          _mode: Database["public"]["Enums"]["match_mode"]
-          _opponent: string
-        }
-        Returns: string
+      create_friend_match:
+        | {
+            Args: {
+              _mode: Database["public"]["Enums"]["match_mode"]
+              _opponent: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              _bet?: number
+              _mode: Database["public"]["Enums"]["match_mode"]
+              _opponent: string
+            }
+            Returns: string
+          }
+      finalize_match: {
+        Args: { _match_id: string; _winner_id: string }
+        Returns: undefined
       }
       has_role: {
         Args: {
@@ -495,6 +587,22 @@ export type Database = {
           total_coins: number
         }[]
       }
+      request_buy_coins: {
+        Args: { _coins: number; _screenshot_url: string }
+        Returns: string
+      }
+      request_withdraw_coins: {
+        Args: {
+          _coins: number
+          _easypaisa_name: string
+          _easypaisa_number: string
+        }
+        Returns: string
+      }
+      update_payment_settings: {
+        Args: { _name: string; _number: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
@@ -502,6 +610,8 @@ export type Database = {
       invite_status: "pending" | "accepted" | "declined" | "cancelled"
       match_mode: "bot" | "1v1" | "2v2" | "1v2" | "custom" | "random"
       match_status: "waiting" | "active" | "finished" | "cancelled"
+      payment_kind: "buy" | "withdraw"
+      payment_request_status: "pending" | "approved" | "rejected"
       player_color_enum: "red" | "blue" | "green" | "yellow"
       shop_item_type:
         | "token_skin"
@@ -641,6 +751,8 @@ export const Constants = {
       invite_status: ["pending", "accepted", "declined", "cancelled"],
       match_mode: ["bot", "1v1", "2v2", "1v2", "custom", "random"],
       match_status: ["waiting", "active", "finished", "cancelled"],
+      payment_kind: ["buy", "withdraw"],
+      payment_request_status: ["pending", "approved", "rejected"],
       player_color_enum: ["red", "blue", "green", "yellow"],
       shop_item_type: [
         "token_skin",
