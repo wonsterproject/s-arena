@@ -9,6 +9,9 @@ import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
 import Lobby from "./pages/Lobby.tsx";
 import Match from "./pages/Match.tsx";
+import Leaderboard from "./pages/Leaderboard.tsx";
+import Profile from "./pages/Profile.tsx";
+import Shop from "./pages/Shop.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -26,6 +29,9 @@ const App = () => (
             <Route path="/signup" element={<Auth mode="signup" />} />
             <Route path="/lobby" element={<ProtectedRoute><Lobby /></ProtectedRoute>} />
             <Route path="/match/:matchId" element={<ProtectedRoute><Match /></ProtectedRoute>} />
+            <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/shop" element={<ProtectedRoute><Shop /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

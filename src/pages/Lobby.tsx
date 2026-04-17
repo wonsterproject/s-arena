@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LogOut, Settings, Coins, Trophy, UserPlus, Users, Bot, Shuffle, Swords,
-  Check, X, Search, Loader2, Send, Crown
+  Check, X, Search, Loader2, Send, Crown, ShoppingBag, User
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -159,8 +159,66 @@ export default function Lobby() {
     }
   };
 
-  const comingSoon = (name: string) =>
-    toast({ title: `${name} coming soon`, description: "Online multiplayer is being set up. Try Bot match for now!" });
+  const startRandomMatch = async (mode: "1v1" | "2v2" | "random") => {
+    if (!user) return;
+    setCreating(true);
+    try {
+      const { data: matchId, error } = await supabase.rpc("join_or_create_match", { _mode: mode });
+      if (error) throw error;
+      if (matchId) {
+        navigate(`/match/${matchId}`);
+      } else {
+        toast({ title: "Searching for opponents...", description: "You'll be matched when more players join." });
+        const ch = supabase
+          .channel(`mm-${user.id}`)
+          .on("postgres_changes", { event: "INSERT", schema: "public", table: "match_players", filter: `user_id=eq.${user.id}` },
+            (payload) => {
+              const mid = (payload.new as any).match_id;
+              supabase.removeChannel(ch);
+              navigate(`/match/${mid}`);
+            })
+          .subscribe();
+        setTimeout(() => supabase.removeChannel(ch), 60000);
+      }
+    } catch (err: any) {
+      toast({ title: "Failed", description: err?.message ?? "Try again", variant: "destructive" });
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const inviteFriend = async (friendId: string, mode: "1v1" | "2v2") => {
+    if (!user) return;
+    setCreating(true);
+    try {
+      const { data: matchId, error } = await supabase.rpc("create_friend_match", { _mode: mode, _opponent: friendId });
+      if (error || !matchId) throw error ?? new Error("Failed");
+      toast({ title: "Invite sent! Waiting for friend..." });
+      navigate(`/match/${matchId}`);
+    } catch (err: any) {
+      toast({ title: "Failed", description: err?.message ?? "Try again", variant: "destructive" });
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const acceptInvite = async (inviteId: string) => {
+    setCreating(true);
+    try {
+      const { data: matchId, error } = await supabase.rpc("accept_match_invite", { _invite_id: inviteId });
+      if (error || !matchId) throw error ?? new Error("Failed");
+      navigate(`/match/${matchId}`);
+    } catch (err: any) {
+      toast({ title: "Failed", description: err?.message ?? "Try again", variant: "destructive" });
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const declineInvite = async (inviteId: string) => {
+    await supabase.from("match_invites").update({ status: "declined" }).eq("id", inviteId);
+    loadInvites();
+  };
 
   const initials = (s?: string | null) => (s ?? "?").slice(0, 2).toUpperCase();
 
@@ -180,8 +238,14 @@ export default function Lobby() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => toast({ title: "Settings coming soon" })} className="glass-btn h-10 w-10 !p-0 flex items-center justify-center" aria-label="Settings">
-            <Settings className="h-4 w-4" />
+          <button onClick={() => navigate("/leaderboard")} className="glass-btn h-10 w-10 !p-0 flex items-center justify-center" aria-label="Leaderboard">
+            <Trophy className="h-4 w-4" />
+          </button>
+          <button onClick={() => navigate("/shop")} className="glass-btn h-10 w-10 !p-0 flex items-center justify-center" aria-label="Shop">
+            <ShoppingBag className="h-4 w-4" />
+          </button>
+          <button onClick={() => navigate("/profile")} className="glass-btn h-10 w-10 !p-0 flex items-center justify-center" aria-label="Profile">
+            <User className="h-4 w-4" />
           </button>
           <button onClick={async () => { await signOut(); navigate("/login"); }} className="glass-btn h-10 flex items-center gap-2">
             <LogOut className="h-4 w-4" />
@@ -217,11 +281,16 @@ export default function Lobby() {
           <div className="glass rounded-2xl p-4 border border-primary/40">
             <p className="text-xs uppercase tracking-widest text-primary mb-2">Match invites</p>
             {invites.map((inv) => (
-              <div key={inv.id} className="flex items-center justify-between py-2 border-t border-border/40 first:border-t-0">
-                <p className="text-sm">
+              <div key={inv.id} className="flex items-center justify-between gap-2 py-2 border-t border-border/40 first:border-t-0">
+                <p className="text-sm flex-1 min-w-0 truncate">
                   <strong>@{inv.profile?.username ?? "someone"}</strong> invited you to <span className="text-primary">{inv.mode}</span>
                 </p>
-                <button onClick={() => comingSoon("Accepting invites")} className="glass-btn h-8 text-xs">View</button>
+                <button onClick={() => acceptInvite(inv.id)} disabled={creating} className="glass-btn h-8 text-xs bg-green-500/30 flex items-center gap-1">
+                  <Check className="h-3 w-3" /> Accept
+                </button>
+                <button onClick={() => declineInvite(inv.id)} className="glass-btn h-8 !px-2 text-xs text-red-400">
+                  <X className="h-3 w-3" />
+                </button>
               </div>
             ))}
           </div>
@@ -250,35 +319,38 @@ export default function Lobby() {
               desc="Auto-match with an online player."
               icon={<Shuffle className="h-6 w-6" />}
               gradient="from-blue-500/30 to-cyan-500/20"
-              onClick={() => comingSoon("Random matchmaking")}
+              loading={creating}
+              onClick={() => startRandomMatch("1v1")}
             />
             <ModeCard
               title="1 vs 1 (Friend)"
-              desc="Challenge a friend."
+              desc="Open Friends tab and tap Invite."
               icon={<Swords className="h-6 w-6" />}
               gradient="from-rose-500/30 to-pink-500/20"
-              onClick={() => comingSoon("Friend duels")}
+              onClick={() => setTab("friends")}
             />
             <ModeCard
               title="2 vs 2 (Friends)"
-              desc="Team up with friends."
+              desc="Open Friends tab and tap Invite."
               icon={<Users className="h-6 w-6" />}
               gradient="from-purple-500/30 to-fuchsia-500/20"
-              onClick={() => comingSoon("Team mode")}
+              onClick={() => setTab("friends")}
             />
             <ModeCard
-              title="1 vs 2"
-              desc="Solo against a friend duo."
+              title="Random 2v2"
+              desc="Auto-match into a 4-player team game."
               icon={<Crown className="h-6 w-6" />}
               gradient="from-amber-500/30 to-orange-500/20"
-              onClick={() => comingSoon("1v2 mode")}
+              loading={creating}
+              onClick={() => startRandomMatch("2v2")}
             />
             <ModeCard
-              title="Custom Match"
-              desc="Choose mode, players & rules."
+              title="Quick Random"
+              desc="Any open match, fastest queue."
               icon={<Settings className="h-6 w-6" />}
               gradient="from-violet-500/30 to-indigo-500/20"
-              onClick={() => comingSoon("Custom match")}
+              loading={creating}
+              onClick={() => startRandomMatch("random")}
             />
           </div>
         )}
@@ -363,7 +435,12 @@ export default function Lobby() {
                         <p className="text-sm font-semibold truncate">@{f.username}</p>
                         <p className="text-xs text-muted-foreground">🏆 {f.wins} · 🪙 {f.coins}</p>
                       </div>
-                      <button onClick={() => comingSoon("Inviting friends")} className="glass-btn h-8 text-xs">Invite</button>
+                      <button onClick={() => inviteFriend(f.id, "1v1")} disabled={creating} className="glass-btn h-8 text-xs flex items-center gap-1 bg-primary/30">
+                        <Swords className="h-3 w-3" /> 1v1
+                      </button>
+                      <button onClick={() => inviteFriend(f.id, "2v2")} disabled={creating} className="glass-btn h-8 text-xs flex items-center gap-1">
+                        <Users className="h-3 w-3" /> 2v2
+                      </button>
                     </div>
                   ))}
                 </div>

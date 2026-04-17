@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      daily_rewards: {
+        Row: {
+          last_claim_at: string | null
+          streak: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          last_claim_at?: string | null
+          streak?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          last_claim_at?: string | null
+          streak?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       friend_requests: {
         Row: {
           created_at: string
@@ -85,6 +106,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      match_chat: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          match_id: string
+          message: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind?: string
+          match_id: string
+          message: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          match_id?: string
+          message?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       match_invites: {
         Row: {
@@ -234,6 +282,27 @@ export type Database = {
           },
         ]
       }
+      matchmaking_queue: {
+        Row: {
+          created_at: string
+          id: string
+          mode: Database["public"]["Enums"]["match_mode"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mode: Database["public"]["Enums"]["match_mode"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mode?: Database["public"]["Enums"]["match_mode"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -270,15 +339,110 @@ export type Database = {
         }
         Relationships: []
       }
+      shop_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          preview: string | null
+          price_coins: number
+          rarity: Database["public"]["Enums"]["shop_rarity"]
+          slug: string
+          type: Database["public"]["Enums"]["shop_item_type"]
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          preview?: string | null
+          price_coins: number
+          rarity?: Database["public"]["Enums"]["shop_rarity"]
+          slug: string
+          type: Database["public"]["Enums"]["shop_item_type"]
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          preview?: string | null
+          price_coins?: number
+          rarity?: Database["public"]["Enums"]["shop_rarity"]
+          slug?: string
+          type?: Database["public"]["Enums"]["shop_item_type"]
+        }
+        Relationships: []
+      }
+      user_inventory: {
+        Row: {
+          acquired_at: string
+          equipped: boolean
+          id: string
+          item_id: string
+          user_id: string
+        }
+        Insert: {
+          acquired_at?: string
+          equipped?: boolean
+          id?: string
+          item_id: string
+          user_id: string
+        }
+        Update: {
+          acquired_at?: string
+          equipped?: boolean
+          id?: string
+          item_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_inventory_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "shop_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      accept_match_invite: { Args: { _invite_id: string }; Returns: string }
+      claim_daily_reward: {
+        Args: never
+        Returns: {
+          coins_awarded: number
+          new_streak: number
+          total_coins: number
+        }[]
+      }
       create_bot_match: { Args: never; Returns: string }
+      create_friend_match: {
+        Args: {
+          _mode: Database["public"]["Enums"]["match_mode"]
+          _opponent: string
+        }
+        Returns: string
+      }
       is_match_participant: {
         Args: { _match_id: string; _user: string }
         Returns: boolean
+      }
+      join_or_create_match: {
+        Args: { _mode: Database["public"]["Enums"]["match_mode"] }
+        Returns: string
+      }
+      purchase_shop_item: {
+        Args: { _item_id: string }
+        Returns: {
+          success: boolean
+          total_coins: number
+        }[]
       }
     }
     Enums: {
@@ -287,6 +451,12 @@ export type Database = {
       match_mode: "bot" | "1v1" | "2v2" | "1v2" | "custom" | "random"
       match_status: "waiting" | "active" | "finished" | "cancelled"
       player_color_enum: "red" | "blue" | "green" | "yellow"
+      shop_item_type:
+        | "token_skin"
+        | "avatar_frame"
+        | "dice_skin"
+        | "board_theme"
+      shop_rarity: "common" | "rare" | "epic" | "legendary"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -419,6 +589,13 @@ export const Constants = {
       match_mode: ["bot", "1v1", "2v2", "1v2", "custom", "random"],
       match_status: ["waiting", "active", "finished", "cancelled"],
       player_color_enum: ["red", "blue", "green", "yellow"],
+      shop_item_type: [
+        "token_skin",
+        "avatar_frame",
+        "dice_skin",
+        "board_theme",
+      ],
+      shop_rarity: ["common", "rare", "epic", "legendary"],
     },
   },
 } as const
