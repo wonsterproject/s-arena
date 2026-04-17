@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LogOut, Settings, Coins, Trophy, UserPlus, Users, Bot, Shuffle, Swords,
-  Check, X, Search, Loader2, Send, Crown
+  Check, X, Search, Loader2, Send, Crown, ShoppingBag, User
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
