@@ -155,8 +155,7 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
                 <div
                   className="absolute inset-0"
                   style={{
-                    background:
-                      "conic-gradient(hsl(var(--red)) 0 25%, hsl(var(--blue)) 25% 50%, hsl(var(--green)) 50% 75%, hsl(var(--yellow)) 75% 100%)",
+                    background: "hsl(0 0% 0%)",
                   }}
                 />
               )}
