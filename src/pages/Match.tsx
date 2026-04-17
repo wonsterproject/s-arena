@@ -218,11 +218,13 @@ export default function Match() {
       confetti({ particleCount: 200, spread: 80, origin: { y: 0.5 } });
       void recordResult(t.player);
       setAnimating(false);
+      movingRef.current = false;
       return;
     }
 
     setAnimating(false);
-    const extra = diceValue === 6 || killed || t.state === "finished";
+    movingRef.current = false;
+    const extra = stepsToMove === 6 || killed || t.state === "finished";
     endTurn(extra);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tokens, diceValue, play, endTurn]);
