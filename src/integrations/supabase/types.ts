@@ -14,16 +14,278 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      friend_requests: {
+        Row: {
+          created_at: string
+          from_user: string
+          id: string
+          status: Database["public"]["Enums"]["friend_request_status"]
+          to_user: string
+        }
+        Insert: {
+          created_at?: string
+          from_user: string
+          id?: string
+          status?: Database["public"]["Enums"]["friend_request_status"]
+          to_user: string
+        }
+        Update: {
+          created_at?: string
+          from_user?: string
+          id?: string
+          status?: Database["public"]["Enums"]["friend_request_status"]
+          to_user?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "friend_requests_from_user_fkey"
+            columns: ["from_user"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friend_requests_to_user_fkey"
+            columns: ["to_user"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      friends: {
+        Row: {
+          created_at: string
+          friend_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          friend_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          friend_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "friends_friend_id_fkey"
+            columns: ["friend_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friends_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      match_invites: {
+        Row: {
+          created_at: string
+          from_user: string
+          id: string
+          match_id: string
+          mode: Database["public"]["Enums"]["match_mode"]
+          status: Database["public"]["Enums"]["invite_status"]
+          to_user: string
+        }
+        Insert: {
+          created_at?: string
+          from_user: string
+          id?: string
+          match_id: string
+          mode: Database["public"]["Enums"]["match_mode"]
+          status?: Database["public"]["Enums"]["invite_status"]
+          to_user: string
+        }
+        Update: {
+          created_at?: string
+          from_user?: string
+          id?: string
+          match_id?: string
+          mode?: Database["public"]["Enums"]["match_mode"]
+          status?: Database["public"]["Enums"]["invite_status"]
+          to_user?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_invites_from_user_fkey"
+            columns: ["from_user"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_invites_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_invites_to_user_fkey"
+            columns: ["to_user"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      match_players: {
+        Row: {
+          bot_name: string | null
+          color: Database["public"]["Enums"]["player_color_enum"]
+          is_bot: boolean
+          joined_at: string
+          match_id: string
+          ready: boolean
+          team: number
+          user_id: string | null
+        }
+        Insert: {
+          bot_name?: string | null
+          color: Database["public"]["Enums"]["player_color_enum"]
+          is_bot?: boolean
+          joined_at?: string
+          match_id: string
+          ready?: boolean
+          team?: number
+          user_id?: string | null
+        }
+        Update: {
+          bot_name?: string | null
+          color?: Database["public"]["Enums"]["player_color_enum"]
+          is_bot?: boolean
+          joined_at?: string
+          match_id?: string
+          ready?: boolean
+          team?: number
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_players_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_players_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      matches: {
+        Row: {
+          created_at: string
+          host_id: string
+          id: string
+          mode: Database["public"]["Enums"]["match_mode"]
+          state: Json | null
+          status: Database["public"]["Enums"]["match_status"]
+          updated_at: string
+          winner_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          host_id: string
+          id?: string
+          mode: Database["public"]["Enums"]["match_mode"]
+          state?: Json | null
+          status?: Database["public"]["Enums"]["match_status"]
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          host_id?: string
+          id?: string
+          mode?: Database["public"]["Enums"]["match_mode"]
+          state?: Json | null
+          status?: Database["public"]["Enums"]["match_status"]
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matches_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_winner_id_fkey"
+            columns: ["winner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          coins: number
+          created_at: string
+          display_name: string | null
+          id: string
+          losses: number
+          updated_at: string
+          username: string
+          wins: number
+        }
+        Insert: {
+          avatar_url?: string | null
+          coins?: number
+          created_at?: string
+          display_name?: string | null
+          id: string
+          losses?: number
+          updated_at?: string
+          username: string
+          wins?: number
+        }
+        Update: {
+          avatar_url?: string | null
+          coins?: number
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          losses?: number
+          updated_at?: string
+          username?: string
+          wins?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_match_participant: {
+        Args: { _match_id: string; _user: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      friend_request_status: "pending" | "accepted" | "declined"
+      invite_status: "pending" | "accepted" | "declined" | "cancelled"
+      match_mode: "bot" | "1v1" | "2v2" | "1v2" | "custom" | "random"
+      match_status: "waiting" | "active" | "finished" | "cancelled"
+      player_color_enum: "red" | "blue" | "green" | "yellow"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +412,12 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      friend_request_status: ["pending", "accepted", "declined"],
+      invite_status: ["pending", "accepted", "declined", "cancelled"],
+      match_mode: ["bot", "1v1", "2v2", "1v2", "custom", "random"],
+      match_status: ["waiting", "active", "finished", "cancelled"],
+      player_color_enum: ["red", "blue", "green", "yellow"],
+    },
   },
 } as const
