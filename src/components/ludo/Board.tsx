@@ -166,6 +166,7 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
                   style={{ background: "hsl(0 0% 0%)" }}
                 />
               )}
+              {SKIP_KEYS.has(tileKey(r, c)) && <SkipCellGlow />}
             </div>
           );
         })}
