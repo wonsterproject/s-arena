@@ -43,12 +43,12 @@ export default function Admin() {
   useEffect(() => {
     if (authLoading || roleLoading) return;
     if (!user) {
-      navigate("/login", { replace: true });
+      navigate("/admin/login", { replace: true });
       return;
     }
     if (!isAdmin) {
       toast({ title: "Access denied", description: "Admins only", variant: "destructive" });
-      navigate("/lobby", { replace: true });
+      navigate("/admin/login", { replace: true });
       return;
     }
     void loadAll();
