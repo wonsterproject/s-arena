@@ -1,0 +1,3 @@
+
+ALTER TABLE public.matches REPLICA IDENTITY FULL;
+ALTER TABLE public.match_players REPLICA IDENTITY FULL;
