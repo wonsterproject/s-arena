@@ -39,13 +39,13 @@ export function createPhysicsWorld(
   const wallMat = new CANNON.Material("wall");
 
   world.addContactMaterial(new CANNON.ContactMaterial(boardMat, pieceMat, {
-    friction: PHYS.friction, restitution: 0.05,
+    friction: PHYS.friction, restitution: 0.0,
   }));
   world.addContactMaterial(new CANNON.ContactMaterial(pieceMat, pieceMat, {
-    friction: 0.05, restitution: 0.85,
+    friction: 0.02, restitution: 0.96,
   }));
   world.addContactMaterial(new CANNON.ContactMaterial(pieceMat, wallMat, {
-    friction: 0.02, restitution: PHYS.restitution,
+    friction: 0.01, restitution: PHYS.restitution,
   }));
 
   // Floor
