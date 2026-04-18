@@ -466,6 +466,19 @@ export default function Lobby() {
       </section>
 
       <div className="h-10" />
+
+      {betDialog && (
+        <BetDialog
+          open={!!betDialog}
+          onClose={() => setBetDialog(null)}
+          friendName={betDialog.friend.username}
+          mode={betDialog.mode}
+          maxCoins={profile?.coins ?? 0}
+          onConfirm={async (bet) => {
+            await inviteFriend(betDialog.friend.id, betDialog.mode, bet);
+          }}
+        />
+      )}
     </main>
   );
 }
