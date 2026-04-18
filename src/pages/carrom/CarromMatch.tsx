@@ -21,35 +21,14 @@ export default function CarromMatch() {
       mode === "bot" ? 1 : null,
     ),
   );
-  const [strikerX, setStrikerX] = useState(0);
-  const [angle, setAngle] = useState(match.turn === 0 ? -Math.PI / 2 : Math.PI / 2); // radians, 0 = +X
-  const [power, setPower] = useState(0.7);
   const [shooting, setShooting] = useState(false);
 
-  // Place striker on baseline whenever turn changes
+  // Reset striker on baseline whenever turn changes
   useEffect(() => {
     if (!apiRef.current) return;
     const z = match.turn === 0 ? BOARD.baselineY : -BOARD.baselineY;
-    apiRef.current.setStrikerPosition(strikerX, z);
-    // Default aim toward opposite side
-    setAngle(match.turn === 0 ? -Math.PI / 2 : Math.PI / 2);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    apiRef.current.setStrikerPosition(0, z);
   }, [match.turn]);
-
-  useEffect(() => {
-    if (!apiRef.current) return;
-    const z = match.turn === 0 ? BOARD.baselineY : -BOARD.baselineY;
-    apiRef.current.setStrikerPosition(strikerX, z);
-  }, [strikerX, match.turn]);
-
-  const handleShoot = () => {
-    if (shooting || match.winner !== null) return;
-    if (!apiRef.current) return;
-    const dx = Math.cos(angle);
-    const dz = Math.sin(angle);
-    setShooting(true);
-    apiRef.current.shoot(dx, dz, power);
-  };
 
   // Bot turn
   useEffect(() => {
@@ -58,24 +37,23 @@ export default function CarromMatch() {
     if (!me.isBot || shooting) return;
     const t = setTimeout(() => {
       if (!apiRef.current) return;
-      // Build a snapshot of pieces with positions from physics — we cheat by reading via DOM-less ref;
-      // simpler: ask scene for the live pieces via window access. Use a safe approach: bot picks a
-      // generic shot using initial layout reasoning isn't great. Instead, do a straight power shot
-      // if we can't access positions. We'll provide a small adapter.
       const piecesSnapshot = (apiRef.current as any)._piecesSnapshot?.() ?? [];
       const fallback = { strikerX: 0, strikerZ: me.side === 0 ? BOARD.baselineY : -BOARD.baselineY, dirX: 0, dirZ: me.side === 0 ? -1 : 1, power: 0.75 };
-      const shot = piecesSnapshot.length
-        ? planBotShot(match, piecesSnapshot, diff)
-        : fallback;
-      setStrikerX(shot.strikerX);
+      const shot = piecesSnapshot.length ? planBotShot(match, piecesSnapshot, diff) : fallback;
       apiRef.current.setStrikerPosition(shot.strikerX, shot.strikerZ);
-      setAngle(Math.atan2(shot.dirZ, shot.dirX));
-      setPower(shot.power);
       setShooting(true);
       setTimeout(() => apiRef.current!.shoot(shot.dirX, shot.dirZ, shot.power), 600);
     }, 900);
     return () => clearTimeout(t);
   }, [match.turn, match.winner, shooting, diff, match]);
+
+  const handleShootRequest = (dirX: number, dirZ: number, power: number, sx: number, sz: number) => {
+    if (shooting || match.winner !== null) return;
+    if (!apiRef.current) return;
+    apiRef.current.setStrikerPosition(sx, sz);
+    setShooting(true);
+    apiRef.current.shoot(dirX, dirZ, power);
+  };
 
   const handleShotResolved = (info: { piecesPocketed: string[]; strikerPocketed: boolean; hitAny: boolean; firstContact: PieceColor | "striker" | null }) => {
     setMatch(prev => {
@@ -98,7 +76,6 @@ export default function CarromMatch() {
         firstContactColor: info.firstContact,
       });
 
-      // If queen was pending from this player and turn passed (cover failed), respawn queen mesh
       if (queenWasPendingBefore && queenOwnerBefore === prev.turn && !updated.queenPocketedPending) {
         const q = updated.pieces.find(p => p.color === "queen");
         if (q && q.pocketed) {
@@ -117,8 +94,6 @@ export default function CarromMatch() {
       mode === "bot" ? `Bot (${diff})` : "Player 2",
       mode === "bot" ? 1 : null,
     ));
-    setStrikerX(0);
-    setPower(0.7);
     window.location.reload();
   };
 
@@ -154,7 +129,7 @@ export default function CarromMatch() {
                 </div>
                 <div className="text-right">
                   <div className="text-2xl font-black">{p.score}</div>
-                  <div className="text-[10px] uppercase tracking-wider" style={{ color: p.color === "white" ? "#f5f1e6" : p.color === "black" ? "#94a3b8" : "#64748b" }}>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
                     {p.color ?? "—"}
                   </div>
                 </div>
@@ -170,64 +145,25 @@ export default function CarromMatch() {
             onShotResolved={handleShotResolved}
             currentSide={match.turn}
             shooting={shooting}
+            interactive={isHumanTurn}
+            onShootRequest={handleShootRequest}
           />
         </div>
 
-        {/* Controls */}
-        <div className="glass rounded-2xl p-4 mt-3 space-y-3">
-          <div>
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-muted-foreground">Striker position</span>
-              <span className="font-mono">{strikerX.toFixed(2)}</span>
+        {/* Instructions */}
+        <div className="glass rounded-2xl p-4 mt-3 text-center text-sm">
+          {isHumanTurn ? (
+            <div className="space-y-1">
+              <div className="font-bold text-primary">🎯 Drag the striker to aim and shoot</div>
+              <div className="text-xs text-muted-foreground">
+                Touch & hold striker → slide left/right to position → pull back in any direction → release to shoot. Pull farther = more power.
+              </div>
             </div>
-            <input
-              type="range"
-              min={-BOARD.baselineHalfWidth}
-              max={BOARD.baselineHalfWidth}
-              step={0.05}
-              value={strikerX}
-              disabled={!isHumanTurn}
-              onChange={(e) => setStrikerX(Number(e.target.value))}
-              className="w-full accent-primary"
-            />
-          </div>
-          <div>
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-muted-foreground">Aim angle</span>
-              <span className="font-mono">{((angle * 180) / Math.PI).toFixed(0)}°</span>
+          ) : (
+            <div className="font-bold text-muted-foreground">
+              {shooting ? "Shot in progress..." : me.isBot ? `${me.name} is thinking...` : "Waiting..."}
             </div>
-            <input
-              type="range"
-              min={match.turn === 0 ? -Math.PI + 0.1 : 0.1}
-              max={match.turn === 0 ? -0.1 : Math.PI - 0.1}
-              step={0.01}
-              value={angle}
-              disabled={!isHumanTurn}
-              onChange={(e) => setAngle(Number(e.target.value))}
-              className="w-full accent-accent"
-            />
-          </div>
-          <div>
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-muted-foreground">Power</span>
-              <span className="font-mono">{Math.round(power * 100)}%</span>
-            </div>
-            <input
-              type="range"
-              min={0.1} max={1} step={0.01}
-              value={power}
-              disabled={!isHumanTurn}
-              onChange={(e) => setPower(Number(e.target.value))}
-              className="w-full accent-yellow-400"
-            />
-          </div>
-          <button
-            onClick={handleShoot}
-            disabled={!isHumanTurn}
-            className="w-full glass-btn h-12 bg-gradient-to-r from-primary/40 to-accent/40 font-black text-lg disabled:opacity-50"
-          >
-            {shooting ? "Shooting..." : me.isBot ? "Bot's turn" : "🎯 SHOOT"}
-          </button>
+          )}
         </div>
 
         {match.winner !== null && (
