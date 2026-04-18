@@ -152,3 +152,34 @@
   animation-iteration-count: infinite;
   animation-timing-function: linear;
 }
+
+/* Neon red pulsing glow for skipped corner cells */
+@keyframes skip-pulse {
+  0%, 100% {
+    box-shadow:
+      inset 0 0 6px hsl(var(--red) / 0.55),
+      inset 0 0 18px hsl(var(--red) / 0.35),
+      0 0 8px hsl(var(--red) / 0.55);
+    background: radial-gradient(circle at 50% 50%, hsl(var(--red) / 0.18), transparent 70%);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 12px hsl(var(--red)),
+      inset 0 0 28px hsl(var(--red) / 0.7),
+      0 0 22px hsl(var(--red) / 0.95),
+      0 0 36px hsl(var(--red) / 0.55);
+    background: radial-gradient(circle at 50% 50%, hsl(var(--red) / 0.35), transparent 75%);
+  }
+}
+.animate-skip-pulse { animation: skip-pulse 1.6s ease-in-out infinite; }
+
+/* Floating neon red orb that drifts across the cell */
+@keyframes skip-orb {
+  0%   { transform: translate(-30%, -30%) scale(0.8); opacity: 0.2; }
+  25%  { transform: translate(40%, -20%)  scale(1.1); opacity: 1; }
+  50%  { transform: translate(30%, 40%)   scale(0.9); opacity: 0.85; }
+  75%  { transform: translate(-30%, 30%)  scale(1.15); opacity: 1; }
+  100% { transform: translate(-30%, -30%) scale(0.8); opacity: 0.2; }
+}
+.animate-skip-orb { animation: skip-orb 2.8s ease-in-out infinite; }
+
