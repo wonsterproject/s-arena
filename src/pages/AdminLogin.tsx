@@ -32,9 +32,17 @@ export default function AdminLogin() {
     }
     setBusy(true);
     try {
-      const email = usernameToEmail(u);
-      const { data: signIn, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      // Try admin domain first, then fall back to player domain
+      const candidates = [`${u.toLowerCase()}@admin.local`, `${u.toLowerCase()}@ludo.local`];
+      let signInData: Awaited<ReturnType<typeof supabase.auth.signInWithPassword>>["data"] | null = null;
+      let lastError: any = null;
+      for (const email of candidates) {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (!error) { signInData = data; lastError = null; break; }
+        lastError = error;
+      }
+      if (!signInData) throw lastError ?? new Error("Login failed");
+      const signIn = signInData;
 
       // Verify admin role server-side
       const { data: roleRow } = await supabase
