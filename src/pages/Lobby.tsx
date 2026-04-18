@@ -173,15 +173,17 @@ export default function Lobby() {
         navigate(`/match/${matchId}`);
       } else {
         toast({ title: "Searching for opponents...", description: "You'll be matched when more players join." });
-        const ch = supabase
-          .channel(`mm-${user.id}`)
-          .on("postgres_changes", { event: "INSERT", schema: "public", table: "match_players", filter: `user_id=eq.${user.id}` },
-            (payload) => {
-              const mid = (payload.new as any).match_id;
-              supabase.removeChannel(ch);
-              navigate(`/match/${mid}`);
-            })
-          .subscribe();
+        const chName = `mm-${user.id}-${Date.now()}`;
+        const ch = supabase.channel(chName);
+        ch.on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "match_players", filter: `user_id=eq.${user.id}` },
+          (payload) => {
+            const mid = (payload.new as any).match_id;
+            supabase.removeChannel(ch);
+            navigate(`/match/${mid}`);
+          },
+        ).subscribe();
         setTimeout(() => supabase.removeChannel(ch), 60000);
       }
     } catch (err: any) {
