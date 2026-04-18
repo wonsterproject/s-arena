@@ -238,6 +238,7 @@ export type Database = {
         Row: {
           bet_amount: number
           created_at: string
+          game_type: Database["public"]["Enums"]["game_type"]
           host_id: string
           id: string
           mode: Database["public"]["Enums"]["match_mode"]
@@ -249,6 +250,7 @@ export type Database = {
         Insert: {
           bet_amount?: number
           created_at?: string
+          game_type?: Database["public"]["Enums"]["game_type"]
           host_id: string
           id?: string
           mode: Database["public"]["Enums"]["match_mode"]
@@ -260,6 +262,7 @@ export type Database = {
         Update: {
           bet_amount?: number
           created_at?: string
+          game_type?: Database["public"]["Enums"]["game_type"]
           host_id?: string
           id?: string
           mode?: Database["public"]["Enums"]["match_mode"]
@@ -561,6 +564,19 @@ export type Database = {
             }
             Returns: string
           }
+        | {
+            Args: {
+              _bet?: number
+              _game?: Database["public"]["Enums"]["game_type"]
+              _mode: Database["public"]["Enums"]["match_mode"]
+              _opponent: string
+            }
+            Returns: string
+          }
+      create_game_bot_match: {
+        Args: { _game: Database["public"]["Enums"]["game_type"] }
+        Returns: string
+      }
       finalize_match: {
         Args: { _match_id: string; _winner_id: string }
         Returns: undefined
@@ -607,6 +623,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "moderator" | "user"
       friend_request_status: "pending" | "accepted" | "declined"
+      game_type: "ludo" | "chess" | "carrom" | "pool"
       invite_status: "pending" | "accepted" | "declined" | "cancelled"
       match_mode: "bot" | "1v1" | "2v2" | "1v2" | "custom" | "random"
       match_status: "waiting" | "active" | "finished" | "cancelled"
@@ -748,6 +765,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "moderator", "user"],
       friend_request_status: ["pending", "accepted", "declined"],
+      game_type: ["ludo", "chess", "carrom", "pool"],
       invite_status: ["pending", "accepted", "declined", "cancelled"],
       match_mode: ["bot", "1v1", "2v2", "1v2", "custom", "random"],
       match_status: ["waiting", "active", "finished", "cancelled"],

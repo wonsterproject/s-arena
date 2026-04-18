@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, forwardRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LogOut, Settings, Coins, Trophy, UserPlus, Users, Bot, Shuffle, Swords,
-  Check, X, Search, Loader2, Send, Crown, ShoppingBag, User, ShieldCheck
+  Check, X, Search, Loader2, Send, Crown, ShoppingBag, User, ShieldCheck, ArrowLeft
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -234,11 +234,14 @@ export default function Lobby() {
       {/* Header */}
       <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
         <div className="flex items-center gap-3">
+          <button onClick={() => navigate("/hub")} className="glass-btn h-11 w-11 !p-0 flex items-center justify-center" aria-label="Back to Hub">
+            <ArrowLeft className="h-5 w-5" />
+          </button>
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent">
             <Crown className="h-6 w-6 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-xl font-black text-glow leading-tight">LUDO ARENA</h1>
+            <h1 className="text-xl font-black text-glow leading-tight">S-ARENA · LUDO</h1>
             <p className="text-xs text-muted-foreground">Lobby</p>
           </div>
         </div>
@@ -485,11 +488,13 @@ function TabBtn({ active, onClick, icon, label }: { active: boolean; onClick: ()
   );
 }
 
-function ModeCard({ title, desc, icon, gradient, onClick, loading }: {
+interface ModeCardProps {
   title: string; desc: string; icon: React.ReactNode; gradient: string; onClick: () => void; loading?: boolean;
-}) {
+}
+const ModeCard = forwardRef<HTMLButtonElement, ModeCardProps>(({ title, desc, icon, gradient, onClick, loading }, ref) => {
   return (
     <button
+      ref={ref}
       onClick={onClick}
       disabled={loading}
       className={`glass relative overflow-hidden rounded-2xl p-5 text-left transition-all hover:scale-[1.02] hover:neon-border bg-gradient-to-br ${gradient} disabled:opacity-60`}
@@ -503,7 +508,8 @@ function ModeCard({ title, desc, icon, gradient, onClick, loading }: {
       <p className="text-xs text-muted-foreground mt-1">{desc}</p>
     </button>
   );
-}
+});
+ModeCard.displayName = "ModeCard";
 
 function LobbyAnimatedBg() {
   const colors = ["hsl(var(--red))", "hsl(var(--blue))", "hsl(var(--green))", "hsl(var(--yellow))"];
