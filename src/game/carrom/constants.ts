@@ -21,14 +21,14 @@ export const STRIKER = {
 };
 
 export const PHYS = {
-  friction: 0.18,        // board surface friction (linear damping handles rest)
-  restitution: 0.35,     // wall bounce
-  pieceLinearDamping: 0.55,
-  pieceAngularDamping: 0.7,
-  strikerLinearDamping: 0.45,
-  maxShotImpulse: 0.6,   // tuned with mass to feel powerful
-  restThreshold: 0.05,   // m/s — below this everything is considered at rest
-  maxSimSeconds: 8,      // safety: end shot after 8s
+  friction: 0.05,        // low surface friction — sliding feels glassy
+  restitution: 0.55,     // wall bounce
+  pieceLinearDamping: 0.32,
+  pieceAngularDamping: 0.4,
+  strikerLinearDamping: 0.30,
+  maxShotImpulse: 0.45,  // tuned with mass for proportional energy transfer
+  restThreshold: 0.05,
+  maxSimSeconds: 8,
 };
 
 export const POCKETS: Array<[number, number]> = [
