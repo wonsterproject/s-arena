@@ -25,13 +25,11 @@ export interface CarromSceneApi {
 
 export default function CarromScene(props: Props) {
   return (
-    <Canvas shadows dpr={[1, 2]} className="rounded-2xl touch-none">
-      <PerspectiveCamera makeDefault position={[0, 9, 8.5]} fov={42} />
+    <Canvas shadows dpr={[1, 2]} className="rounded-2xl touch-none" orthographic camera={{ position: [0, 10, 0.001], zoom: 55, near: 0.1, far: 100 }}>
       <color attach="background" args={["#1a0f08"]} />
-      <fog attach="fog" args={["#1a0f08", 14, 30]} />
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[5, 10, 5]} intensity={1.4} castShadow shadow-mapSize={[2048, 2048]} />
-      <Environment preset="warehouse" />
+      <ambientLight intensity={0.6} />
+      <directionalLight position={[5, 10, 5]} intensity={1.3} castShadow shadow-mapSize={[2048, 2048]} />
+      <directionalLight position={[-5, 8, -5]} intensity={0.4} />
       <SceneInner {...props} />
     </Canvas>
   );
