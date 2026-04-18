@@ -19,7 +19,7 @@ export default function Auth({ mode }: AuthPageProps) {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) navigate("/lobby", { replace: true });
+    if (!loading && user) navigate("/hub", { replace: true });
   }, [user, loading, navigate]);
 
   const validate = () => {
@@ -50,12 +50,16 @@ export default function Auth({ mode }: AuthPageProps) {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/lobby`,
+            emailRedirectTo: `${window.location.origin}/hub`,
             data: { username: username.trim().toLowerCase() },
           },
         });
         if (error) throw error;
-        toast({ title: "Account created!", description: "Welcome to Ludo Arena" });
+        // Auto-login after signup since email auto-confirm is enabled
+        if (!(await supabase.auth.getSession()).data.session) {
+          await supabase.auth.signInWithPassword({ email, password });
+        }
+        toast({ title: "Account created!", description: "Welcome to S-ARENA" });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -81,7 +85,7 @@ export default function Auth({ mode }: AuthPageProps) {
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent mb-3 shadow-lg">
             <Dice5 className="h-9 w-9 text-primary-foreground" />
           </div>
-          <h1 className="text-3xl font-black text-glow tracking-tight">LUDO ARENA</h1>
+          <h1 className="text-3xl font-black text-glow tracking-tight">S-ARENA</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {mode === "signup" ? "Create your account to play" : "Welcome back, champion"}
           </p>
