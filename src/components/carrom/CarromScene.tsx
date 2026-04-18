@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, Environment, PerspectiveCamera } from "@react-three/drei";
 import * as THREE from "three";
 import { createPhysicsWorld, type PhysicsWorld } from "@/game/carrom/physics";
 import { BOARD, PIECE, STRIKER, POCKETS, initialPieces, type PieceColor } from "@/game/carrom/constants";
