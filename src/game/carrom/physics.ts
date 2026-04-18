@@ -39,13 +39,13 @@ export function createPhysicsWorld(
   const wallMat = new CANNON.Material("wall");
 
   world.addContactMaterial(new CANNON.ContactMaterial(boardMat, pieceMat, {
-    friction: PHYS.friction, restitution: 0.05,
+    friction: PHYS.friction, restitution: 0.0,
   }));
   world.addContactMaterial(new CANNON.ContactMaterial(pieceMat, pieceMat, {
-    friction: 0.05, restitution: 0.85,
+    friction: 0.02, restitution: 0.96,
   }));
   world.addContactMaterial(new CANNON.ContactMaterial(pieceMat, wallMat, {
-    friction: 0.02, restitution: PHYS.restitution,
+    friction: 0.01, restitution: PHYS.restitution,
   }));
 
   // Floor
@@ -72,7 +72,7 @@ export function createPhysicsWorld(
   makeWall( halfPlusGap + wallT / 2, 0, wallT / 2, wallLen / 2);
   makeWall(-halfPlusGap - wallT / 2, 0, wallT / 2, wallLen / 2);
 
-  // Pieces
+  // Pieces (locked to slide only — no flipping/tipping)
   const pieces: PieceBody[] = initialLayout.map(p => {
     const shape = new CANNON.Cylinder(PIECE.radius, PIECE.radius, PIECE.height, 16);
     const body = new CANNON.Body({
@@ -86,6 +86,9 @@ export function createPhysicsWorld(
     });
     body.addShape(shape);
     body.position.set(p.x, PIECE.height / 2 + 0.01, p.z);
+    // Lock vertical motion + tipping: only XZ translation and Y-axis spin allowed
+    body.linearFactor.set(1, 0, 1);
+    body.angularFactor.set(0, 1, 0);
     world.addBody(body);
     return { id: p.id, color: p.color, body, pocketed: false };
   });
@@ -103,6 +106,8 @@ export function createPhysicsWorld(
   });
   striker.addShape(strikerShape);
   striker.position.set(0, STRIKER.height / 2 + 0.01, BOARD.baselineY);
+  striker.linearFactor.set(1, 0, 1);
+  striker.angularFactor.set(0, 1, 0);
   world.addBody(striker);
 
   // Shot log: first contact tracking
