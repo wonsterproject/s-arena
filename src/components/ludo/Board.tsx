@@ -28,6 +28,15 @@ interface BoardProps {
 
 const SIZE = 15;
 
+// Cells that the path "skips" (diagonal corner turns). Decorated with neon red floating lights.
+const SKIP_CELLS: [number, number][] = [
+  [6, 6],
+  [6, 8],
+  [8, 6],
+  [8, 8],
+];
+const SKIP_KEYS = new Set(SKIP_CELLS.map(([r, c]) => `${r},${c}`));
+
 const QUADRANT: Record<PlayerColor, { area: string; rows: [number, number]; cols: [number, number] }> = {
   red:    { area: "red",    rows: [0, 5], cols: [0, 5] },
   blue:   { area: "blue",   rows: [0, 5], cols: [9, 14] },
