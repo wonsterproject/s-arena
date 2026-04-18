@@ -34,12 +34,12 @@ const GAMES: GameCard[] = [
   },
   {
     id: "carrom",
-    title: "Carrom Board",
-    tagline: "Pocket the queen",
+    title: "Carrom 3D",
+    tagline: "Real physics, queen + cover",
     icon: <Circle className="h-12 w-12" />,
     gradient: "from-orange-700 via-amber-600 to-yellow-500",
     route: "/carrom/lobby",
-    status: "soon",
+    status: "live",
   },
   {
     id: "pool",

@@ -18,6 +18,8 @@ import AdminLogin from "./pages/AdminLogin.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import ChessLobby from "./pages/chess/ChessLobby.tsx";
 import ChessMatch from "./pages/chess/ChessMatch.tsx";
+import CarromLobby from "./pages/carrom/CarromLobby.tsx";
+import CarromMatch from "./pages/carrom/CarromMatch.tsx";
 import ComingSoon from "./pages/ComingSoon.tsx";
 
 const queryClient = new QueryClient();
@@ -38,7 +40,8 @@ const App = () => (
             <Route path="/match/:matchId" element={<ProtectedRoute><Match /></ProtectedRoute>} />
             <Route path="/chess/lobby" element={<ProtectedRoute><ChessLobby /></ProtectedRoute>} />
             <Route path="/chess/play" element={<ProtectedRoute><ChessMatch /></ProtectedRoute>} />
-            <Route path="/carrom/lobby" element={<ProtectedRoute><ComingSoon title="Carrom Board" description="Realistic physics carrom game with striker, queen rule, and multiplayer." /></ProtectedRoute>} />
+            <Route path="/carrom/lobby" element={<ProtectedRoute><CarromLobby /></ProtectedRoute>} />
+            <Route path="/carrom/play" element={<ProtectedRoute><CarromMatch /></ProtectedRoute>} />
             <Route path="/pool/lobby" element={<ProtectedRoute><ComingSoon title="8-Ball Pool" description="Classic billiards with cue spin, fouls, and full 8-ball rules." /></ProtectedRoute>} />
             <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
