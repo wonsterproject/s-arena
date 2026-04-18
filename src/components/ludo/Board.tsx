@@ -268,3 +268,40 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
     </div>
   );
 }
+
+/** Decorative neon-red glow + floating orbs for the 4 "skipped" corner cells. */
+function SkipCellGlow() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden animate-skip-pulse">
+      {/* Soft red wash */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(circle at 50% 50%, hsl(var(--red) / 0.22), transparent 70%)",
+        }}
+      />
+      {/* Two floating neon orbs at offset phases */}
+      <span
+        className="absolute left-1/2 top-1/2 h-[28%] w-[28%] -translate-x-1/2 -translate-y-1/2 rounded-full animate-skip-orb"
+        style={{
+          background:
+            "radial-gradient(circle at 35% 30%, hsl(0 0% 100% / 0.95), hsl(var(--red)) 55%, hsl(var(--red) / 0.2) 90%)",
+          boxShadow:
+            "0 0 10px hsl(var(--red)), 0 0 22px hsl(var(--red) / 0.85), 0 0 38px hsl(var(--red) / 0.5)",
+          filter: "saturate(1.4)",
+        }}
+      />
+      <span
+        className="absolute left-1/2 top-1/2 h-[18%] w-[18%] -translate-x-1/2 -translate-y-1/2 rounded-full animate-skip-orb"
+        style={{
+          animationDelay: "-1.4s",
+          background:
+            "radial-gradient(circle at 40% 35%, hsl(0 0% 100% / 0.9), hsl(var(--red)) 60%)",
+          boxShadow:
+            "0 0 8px hsl(var(--red)), 0 0 16px hsl(var(--red) / 0.9)",
+        }}
+      />
+    </div>
+  );
+}
