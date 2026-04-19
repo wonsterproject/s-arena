@@ -92,6 +92,7 @@ function SceneInner({ onReady, onShotResolved, currentSide, shooting, interactiv
         }
       },
       getStrikerPos: () => ({ x: phys.striker.position.x, z: phys.striker.position.z }),
+      onCollision: (cb) => phys.onCollision(cb),
     };
     (api as any)._piecesSnapshot = () => phys.pieces.map(p => ({
       id: p.id, color: p.color, pocketed: p.pocketed,
