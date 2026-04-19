@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Trophy, Crown, Coins, Disc } from "lucide-react";
+import { Trophy, Crown, Disc } from "lucide-react";
 import CarromScene, { type CarromSceneApi } from "@/components/carrom/CarromScene";
 import { createMatch, resolveShot } from "@/game/carrom/rules";
 import { planBotShot, type Difficulty } from "@/game/carrom/bot";
