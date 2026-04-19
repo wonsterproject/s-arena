@@ -55,6 +55,14 @@ export function resolveShot(state: MatchState, log: ShotEventLog): MatchState {
     }
   }
 
+  // Foul: first contact was opponent's coin (wrong-coin foul)
+  if (!foul && me.color && log.firstContactColor) {
+    const oppColor = me.color === "white" ? "black" : "white";
+    if (log.firstContactColor === oppColor) {
+      foul = true; foulReason = `Hit opponent's ${oppColor} first — foul`;
+    }
+  }
+
   // Score own coins
   if (me.color) {
     const ownCount = log.pocketedThisShot.filter(c => c === me.color).length;
