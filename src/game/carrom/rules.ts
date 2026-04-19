@@ -47,16 +47,10 @@ export function resolveShot(state: MatchState, log: ShotEventLog): MatchState {
     foul = true; foulReason = "Striker pocketed — foul";
   }
 
-  // Foul: pocketed opponent's color
-  if (me.color) {
-    const oppColor = me.color === "white" ? "black" : "white";
-    if (log.pocketedThisShot.includes(oppColor)) {
-      foul = true; foulReason = `Opponent's ${oppColor} coin pocketed — foul`;
-    }
-  }
-
-  // Foul: first contact was opponent's coin (wrong-coin foul)
-  if (!foul && me.color && log.firstContactColor) {
+  // Foul: wrong-coin foul = opponent's coin was hit first
+  // Pocketing an opponent coin alone is NOT treated as an automatic foul here;
+  // the foul is based on first contact, matching the intended rules.
+  if (me.color && log.firstContactColor) {
     const oppColor = me.color === "white" ? "black" : "white";
     if (log.firstContactColor === oppColor) {
       foul = true; foulReason = `Hit opponent's ${oppColor} first — foul`;
