@@ -1,19 +1,14 @@
-import { Star } from "lucide-react";
 import { ReactNode } from "react";
 import {
-  CENTER,
   HOME_BASE,
-  HOME_PATHS,
-  MAIN_PATH,
   PLAYER_HEX,
   PlayerColor,
   PLAYERS,
-  SAFE_TILES,
   Token,
   getTokenCell,
   tileKey,
 } from "@/game/ludoConstants";
-import { BoardSVGDefs, stoneVariant } from "./BoardTextures";
+import boardBg from "@/assets/ludo-board-realistic.png";
 
 interface BoardProps {
   tokens: Token[];
@@ -27,11 +22,6 @@ interface BoardProps {
 
 const SIZE = 15;
 
-const SKIP_CELLS: [number, number][] = [
-  [6, 6], [6, 8], [8, 6], [8, 8],
-];
-const SKIP_KEYS = new Set(SKIP_CELLS.map(([r, c]) => `${r},${c}`));
-
 const QUADRANT: Record<PlayerColor, { rows: [number, number]; cols: [number, number] }> = {
   red:    { rows: [0, 5], cols: [0, 5] },
   blue:   { rows: [0, 5], cols: [9, 14] },
@@ -39,17 +29,12 @@ const QUADRANT: Record<PlayerColor, { rows: [number, number]; cols: [number, num
   yellow: { rows: [9, 14], cols: [0, 5] },
 };
 
-function isMainPathCell(r: number, c: number): boolean {
-  return MAIN_PATH.some(([rr, cc]) => rr === r && cc === c);
-}
-
-function homeColorOfCell(r: number, c: number): PlayerColor | null {
-  for (const p of PLAYERS) {
-    if (HOME_PATHS[p].some(([rr, cc]) => rr === r && cc === c)) return p;
-  }
-  return null;
-}
-
+/**
+ * Board now uses the realistic 3D coal+glass+stone background image
+ * (mounted via LavaBackground). The board itself is a transparent grid
+ * that simply positions tokens, the active-player highlight, the dice
+ * area and clickable hitboxes on top of the image.
+ */
 export function Board({
   tokens,
   currentPlayer,
@@ -69,70 +54,56 @@ export function Board({
   });
 
   return (
-    <div className="rainbow-frame aspect-square w-full max-w-[760px]" role="grid" aria-label="Ludo board">
-      <BoardSVGDefs />
+    <div className="aspect-square w-full max-w-[760px] relative" role="grid" aria-label="Ludo board">
+      {/* Realistic 3D coal+glass+stone board image — exact reference */}
+      <img
+        src={boardBg}
+        alt=""
+        aria-hidden
+        className="absolute inset-0 h-full w-full object-cover rounded-[1.4rem] select-none pointer-events-none"
+        draggable={false}
+        style={{ filter: "saturate(1.08) contrast(1.04)" }}
+      />
+      {/* Live ember/heat overlay sits inside the board too */}
       <div
-        className="relative grid h-full w-full overflow-hidden rounded-[1.4rem] animate-board-heat"
+        className="absolute inset-0 rounded-[1.4rem] pointer-events-none animate-board-heat"
+        style={{
+          background:
+            "radial-gradient(ellipse at 50% 50%, hsl(20 90% 40% / 0.15), transparent 70%)",
+          mixBlendMode: "screen",
+        }}
+      />
+      <div
+        className="relative grid h-full w-full overflow-hidden rounded-[1.4rem]"
         style={{
           gridTemplateColumns: `repeat(${SIZE}, 1fr)`,
           gridTemplateRows: `repeat(${SIZE}, 1fr)`,
-          gap: "1px",
-          background: "hsl(20 25% 4%)",
         }}
       >
-        {/* ---------- SHATTERED GEMSTONE QUADRANTS ---------- */}
+        {/* Active-player home zone glow ring (subtle pulsing highlight on top of image) */}
         {PLAYERS.map((p) => {
           const q = QUADRANT[p];
           const isActive = p === currentPlayer;
           return (
             <div
               key={`q-${p}`}
-              className="pointer-events-none relative animate-gem-shimmer"
+              className={`pointer-events-none relative ${isActive ? "animate-lava-pulse" : ""}`}
               style={{
                 gridColumn: `${q.cols[0] + 1} / span 6`,
                 gridRow: `${q.rows[0] + 1} / span 6`,
                 boxShadow: isActive
-                  ? `inset 0 0 0 3px hsl(45 100% 65% / 0.95), inset 0 0 60px ${PLAYER_HEX[p]}, 0 0 36px ${PLAYER_HEX[p]}cc`
-                  : `inset 0 0 0 2px hsl(45 100% 60% / 0.55), inset 0 0 30px hsl(0 0% 0% / 0.4)`,
+                  ? `inset 0 0 0 4px hsl(45 100% 65% / 0.85), inset 0 0 50px ${PLAYER_HEX[p]}aa, 0 0 30px ${PLAYER_HEX[p]}88`
+                  : "none",
+                borderRadius: "12px",
               }}
             >
-              {/* shattered gemstone fill */}
-              <svg
-                viewBox="0 0 100 100"
-                preserveAspectRatio="none"
-                className="absolute inset-0 h-full w-full"
-              >
-                <use href={`#shatter-${p}`} width="100" height="100" />
-              </svg>
-              {/* lava-glow leaking through cracks */}
-              <div
-                className="absolute inset-0 pointer-events-none mix-blend-screen animate-lava-pulse"
-                style={{
-                  background: `radial-gradient(ellipse at 50% 50%, ${PLAYER_HEX[p]}33, transparent 70%)`,
-                }}
-              />
-              {/* dark inner well so home bases sit on a solid base */}
-              <div
-                className="absolute inset-[12%] rounded-2xl"
-                style={{
-                  background:
-                    "linear-gradient(160deg, hsl(15 35% 6% / 0.95), hsl(0 50% 4% / 0.98))",
-                  boxShadow: `
-                    inset 0 0 0 3px hsl(45 100% 58%),
-                    inset 0 0 0 5px ${PLAYER_HEX[p]}cc,
-                    inset 0 0 28px ${PLAYER_HEX[p]}55,
-                    inset 0 -4px 10px hsl(0 0% 0% / 0.6),
-                    0 4px 14px hsl(0 0% 0% / 0.5)
-                  `,
-                }}
-              />
               {playerNames?.[p] && (
                 <div
                   className="absolute left-1/2 bottom-1.5 -translate-x-1/2 px-2 py-0.5 rounded-md text-[9px] sm:text-[10px] font-black tracking-wide whitespace-nowrap max-w-[85%] truncate z-10"
                   style={{
-                    background: "hsl(0 0% 0% / 0.65)",
+                    background: "hsl(0 0% 0% / 0.7)",
                     color: "hsl(0 0% 100%)",
-                    boxShadow: `0 0 0 1px hsl(45 100% 60% / 0.7)`,
+                    boxShadow: `0 0 0 1px hsl(45 100% 60% / 0.7), 0 0 12px hsl(0 0% 0% / 0.6)`,
                   }}
                 >
                   {playerNames[p]}
@@ -142,137 +113,7 @@ export function Board({
           );
         })}
 
-        {/* ---------- TILES ---------- */}
-        {Array.from({ length: SIZE * SIZE }).map((_, idx) => {
-          const r = Math.floor(idx / SIZE);
-          const c = idx % SIZE;
-          const onMain = isMainPathCell(r, c);
-          const homeColor = homeColorOfCell(r, c);
-          const isCenter = r === CENTER[0] && c === CENTER[1];
-          const isSafe = SAFE_TILES.has(tileKey(r, c));
-
-          const inQuadrant = PLAYERS.some((p) => {
-            const q = QUADRANT[p];
-            return r >= q.rows[0] && r <= q.rows[1] && c >= q.cols[0] && c <= q.cols[1];
-          });
-          if (inQuadrant) return null;
-          if (isCenter) {
-            return (
-              <div
-                key={`t-${r}-${c}`}
-                style={{ gridColumn: c + 1, gridRow: r + 1, background: "hsl(0 0% 0%)" }}
-              />
-            );
-          }
-
-          // colored gem arm tile
-          if (homeColor) {
-            return (
-              <div
-                key={`t-${r}-${c}`}
-                className="relative animate-gem-shimmer"
-                style={{ gridColumn: c + 1, gridRow: r + 1 }}
-              >
-                <svg
-                  viewBox="0 0 100 100"
-                  preserveAspectRatio="none"
-                  className="absolute inset-0 h-full w-full"
-                  style={{
-                    filter: `drop-shadow(0 0 4px ${PLAYER_HEX[homeColor]}88)`,
-                  }}
-                >
-                  <use href={`#gem-${homeColor}`} width="100" height="100" />
-                </svg>
-                {/* lava reflection through gem */}
-                <div
-                  className="absolute inset-0 pointer-events-none mix-blend-overlay animate-lava-pulse"
-                  style={{
-                    background: `linear-gradient(135deg, ${PLAYER_HEX[homeColor]}55, transparent 60%)`,
-                  }}
-                />
-              </div>
-            );
-          }
-
-          // path tile or neutral — broken stone
-          if (onMain) {
-            const variant = stoneVariant(r, c);
-            return (
-              <div
-                key={`t-${r}-${c}`}
-                className="relative"
-                style={{ gridColumn: c + 1, gridRow: r + 1 }}
-              >
-                <svg
-                  viewBox="0 0 100 100"
-                  preserveAspectRatio="none"
-                  className="absolute inset-0 h-full w-full"
-                >
-                  <use href={`#${variant}`} width="100" height="100" />
-                </svg>
-                {/* faint lava glow leak through cracks */}
-                <div
-                  className="absolute inset-0 pointer-events-none mix-blend-screen animate-lava-pulse"
-                  style={{
-                    background:
-                      "radial-gradient(circle at 50% 60%, hsl(20 95% 50% / 0.18), transparent 70%)",
-                  }}
-                />
-                {isSafe && (
-                  <Star
-                    className="absolute inset-0 m-auto h-3/5 w-3/5 z-[2]"
-                    style={{
-                      color: "hsl(45 100% 58%)",
-                      filter: "drop-shadow(0 0 5px hsl(45 100% 60%))",
-                    }}
-                    fill="currentColor"
-                    strokeWidth={1}
-                  />
-                )}
-                {SKIP_KEYS.has(tileKey(r, c)) && <SkipCellGlow />}
-              </div>
-            );
-          }
-
-          // off-path filler in cross arms (shouldn't usually exist but safe fallback)
-          return (
-            <div
-              key={`t-${r}-${c}`}
-              style={{
-                gridColumn: c + 1,
-                gridRow: r + 1,
-                background: "hsl(0 0% 0% / 0.4)",
-              }}
-            />
-          );
-        })}
-
-        {/* Center star-burst rays */}
-        <div
-          className="pointer-events-none absolute"
-          style={{
-            left: `${(6 / SIZE) * 100}%`,
-            top: `${(6 / SIZE) * 100}%`,
-            width: `${(3 / SIZE) * 100}%`,
-            height: `${(3 / SIZE) * 100}%`,
-            zIndex: 5,
-          }}
-        >
-          <div
-            className="absolute inset-0 animate-center-rays"
-            style={{
-              background: `conic-gradient(from 0deg,
-                hsl(0 90% 60% / 0.55) 0deg, transparent 45deg,
-                hsl(45 100% 55% / 0.55) 90deg, transparent 135deg,
-                hsl(140 75% 50% / 0.55) 180deg, transparent 225deg,
-                hsl(215 95% 60% / 0.55) 270deg, transparent 315deg)`,
-              borderRadius: "50%",
-              filter: "blur(8px)",
-            }}
-          />
-        </div>
-
-        {/* Center content (dice / decoration) */}
+        {/* Center content (dice) */}
         <div
           className="pointer-events-auto relative flex items-center justify-center z-20"
           style={{ gridColumn: "7 / span 3", gridRow: "7 / span 3" }}
@@ -282,6 +123,7 @@ export function Board({
 
         {/* Tokens overlay */}
         <div className="pointer-events-none absolute inset-0">
+          {/* Home base parking slots — subtle dark wells so tokens read on glass */}
           <div
             className="grid h-full w-full"
             style={{
@@ -297,10 +139,10 @@ export function Board({
                   style={{ gridColumn: c + 1, gridRow: r + 1 }}
                 >
                   <div
-                    className="h-[80%] w-[80%] rounded-full"
+                    className="h-[78%] w-[78%] rounded-full"
                     style={{
-                      background: `radial-gradient(circle at 50% 50%, hsl(15 35% 8%), hsl(0 50% 4%) 70%)`,
-                      boxShadow: `inset 0 0 0 2px ${PLAYER_HEX[p]}, inset 0 -3px 6px hsl(0 0% 0% / 0.6), inset 0 0 10px ${PLAYER_HEX[p]}55, 0 0 8px ${PLAYER_HEX[p]}55`,
+                      background: `radial-gradient(circle at 50% 50%, hsl(0 0% 0% / 0.55), hsl(0 0% 0% / 0.85) 75%)`,
+                      boxShadow: `inset 0 0 0 2px ${PLAYER_HEX[p]}cc, inset 0 -3px 6px hsl(0 0% 0% / 0.7), 0 0 10px ${PLAYER_HEX[p]}77`,
                     }}
                   />
                 </div>
@@ -346,8 +188,8 @@ export function Board({
                             movable ? "scale(1.08)" : ""
                           }`,
                           filter: movable
-                            ? `drop-shadow(0 0 10px ${c2}) drop-shadow(0 4px 6px hsl(0 0% 0% / 0.6))`
-                            : `drop-shadow(0 3px 4px hsl(0 0% 0% / 0.55))`,
+                            ? `drop-shadow(0 0 12px ${c2}) drop-shadow(0 4px 6px hsl(0 0% 0% / 0.7))`
+                            : `drop-shadow(0 3px 5px hsl(0 0% 0% / 0.65))`,
                           zIndex: 10 + i,
                         }}
                         aria-label={`${t.player} token`}
@@ -362,39 +204,6 @@ export function Board({
           })}
         </div>
       </div>
-    </div>
-  );
-}
-
-function SkipCellGlow() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden animate-skip-pulse">
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(circle at 50% 50%, hsl(var(--red) / 0.3), transparent 70%)",
-        }}
-      />
-      <span
-        className="absolute left-1/2 top-1/2 h-[28%] w-[28%] -translate-x-1/2 -translate-y-1/2 rounded-full animate-skip-orb"
-        style={{
-          background:
-            "radial-gradient(circle at 35% 30%, hsl(0 0% 100% / 0.95), hsl(var(--red)) 55%, hsl(var(--red) / 0.2) 90%)",
-          boxShadow:
-            "0 0 10px hsl(var(--red)), 0 0 22px hsl(var(--red) / 0.85), 0 0 38px hsl(var(--red) / 0.5)",
-          filter: "saturate(1.4)",
-        }}
-      />
-      <span
-        className="absolute left-1/2 top-1/2 h-[18%] w-[18%] -translate-x-1/2 -translate-y-1/2 rounded-full animate-skip-orb"
-        style={{
-          animationDelay: "-1.4s",
-          background:
-            "radial-gradient(circle at 40% 35%, hsl(0 0% 100% / 0.9), hsl(var(--red)) 60%)",
-          boxShadow: "0 0 8px hsl(var(--red)), 0 0 16px hsl(var(--red) / 0.9)",
-        }}
-      />
     </div>
   );
 }

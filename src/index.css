@@ -313,3 +313,10 @@
   50%      { filter: brightness(1.04) contrast(1.02); }
 }
 .animate-board-heat { animation: board-heat 3.8s ease-in-out infinite; }
+
+/* Slow coal breathing for the bg image */
+@keyframes coal-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.55; }
+  50%      { transform: scale(1.02); opacity: 0.85; }
+}
+.animate-coal-breathe { animation: coal-breathe 6s ease-in-out infinite; }

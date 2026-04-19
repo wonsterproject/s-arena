@@ -1,176 +1,170 @@
-import { Canvas, useFrame } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
-import * as THREE from "three";
+import { useEffect, useRef } from "react";
 
 /**
- * Full-screen molten cracked-stone background.
- * Custom GLSL shader simulates lava flowing through black volcanic stone cracks
- * with heat shimmer, slow pulse and tiny ember sparks. Sits behind the board.
- */
-const fragmentShader = /* glsl */ `
-  precision highp float;
-  varying vec2 vUv;
-  uniform float uTime;
-  uniform vec2 uRes;
-
-  // hash + noise utilities
-  float hash(vec2 p){ p = fract(p*vec2(123.34, 456.21)); p += dot(p, p+45.32); return fract(p.x*p.y); }
-  float noise(vec2 p){
-    vec2 i = floor(p); vec2 f = fract(p);
-    float a = hash(i);
-    float b = hash(i+vec2(1.0,0.0));
-    float c = hash(i+vec2(0.0,1.0));
-    float d = hash(i+vec2(1.0,1.0));
-    vec2 u = f*f*(3.0-2.0*f);
-    return mix(a,b,u.x) + (c-a)*u.y*(1.0-u.x) + (d-b)*u.x*u.y;
-  }
-  float fbm(vec2 p){
-    float v = 0.0; float a = 0.5;
-    for(int i=0;i<6;i++){ v += a*noise(p); p *= 2.05; a *= 0.5; }
-    return v;
-  }
-
-  // voronoi crack network — distance to second-closest cell point
-  vec2 voronoiCracks(vec2 p){
-    vec2 n = floor(p); vec2 f = fract(p);
-    float d1 = 8.0; float d2 = 8.0;
-    for(int j=-1;j<=1;j++){
-      for(int i=-1;i<=1;i++){
-        vec2 g = vec2(float(i), float(j));
-        vec2 o = vec2(hash(n+g), hash(n+g+17.3));
-        o = 0.5 + 0.5*sin(uTime*0.15 + 6.2831*o);
-        vec2 r = g + o - f;
-        float d = dot(r,r);
-        if(d < d1){ d2 = d1; d1 = d; } else if(d < d2){ d2 = d; }
-      }
-    }
-    return vec2(sqrt(d1), sqrt(d2));
-  }
-
-  void main(){
-    vec2 uv = vUv;
-    // aspect-correct
-    vec2 p = uv * vec2(uRes.x/uRes.y, 1.0) * 4.0;
-
-    // slow drift with heat shimmer
-    float shimmer = fbm(p*2.5 + uTime*0.25)*0.05;
-    p += shimmer;
-
-    // crack network
-    vec2 vc = voronoiCracks(p*1.2);
-    float crackEdge = vc.y - vc.x;          // narrow valleys = cracks
-    float crack = smoothstep(0.06, 0.0, crackEdge);
-
-    // molten lava color inside cracks (animated fbm)
-    float heat = fbm(p*1.8 + vec2(0.0, uTime*0.3));
-    heat += 0.4*fbm(p*4.0 - vec2(uTime*0.4, 0.0));
-    heat = clamp(heat, 0.0, 1.2);
-
-    // base black volcanic stone with subtle texture
-    vec3 stone = mix(vec3(0.025,0.018,0.022), vec3(0.07,0.04,0.05), fbm(p*5.0));
-    stone *= 0.55 + 0.25*noise(p*30.0);
-
-    // lava color ramp: deep red -> orange -> bright yellow core
-    vec3 lavaDeep   = vec3(0.45, 0.05, 0.02);
-    vec3 lavaMid    = vec3(1.10, 0.35, 0.05);
-    vec3 lavaHot    = vec3(1.60, 0.95, 0.35);
-    vec3 lava = mix(lavaDeep, lavaMid, smoothstep(0.2, 0.7, heat));
-    lava = mix(lava, lavaHot, smoothstep(0.75, 1.05, heat));
-
-    // composite
-    vec3 col = stone;
-    col = mix(col, lava, crack * (0.6 + 0.4*heat));
-
-    // soft glow halo around cracks
-    float halo = smoothstep(0.18, 0.0, crackEdge) - crack;
-    col += lava * halo * 0.55 * (0.6 + 0.4*sin(uTime*0.8 + heat*6.0));
-
-    // global slow pulse breathing
-    float pulse = 0.85 + 0.15*sin(uTime*0.5);
-    col *= pulse;
-
-    // tiny floating embers
-    vec2 sp = p*3.0 + vec2(0.0, uTime*0.6);
-    float spark = step(0.997, hash(floor(sp*40.0)));
-    col += vec3(1.4, 0.7, 0.2) * spark * (0.5 + 0.5*sin(uTime*8.0));
-
-    // vignette
-    float vg = smoothstep(1.4, 0.4, length(uv-0.5));
-    col *= 0.55 + 0.45*vg;
-
-    gl_FragColor = vec4(col, 1.0);
-  }
-`;
-
-const vertexShader = /* glsl */ `
-  varying vec2 vUv;
-  void main(){
-    vUv = uv;
-    gl_Position = vec4(position.xy, 0.0, 1.0);
-  }
-`;
-
-function LavaPlane() {
-  const matRef = useRef<THREE.ShaderMaterial>(null!);
-  const uniforms = useMemo(
-    () => ({
-      uTime: { value: 0 },
-      uRes: { value: new THREE.Vector2(1, 1) },
-    }),
-    []
-  );
-
-  useFrame((state) => {
-    if (!matRef.current) return;
-    matRef.current.uniforms.uTime.value = state.clock.getElapsedTime();
-    const size = state.size;
-    matRef.current.uniforms.uRes.value.set(size.width, size.height);
-  });
-
-  return (
-    <mesh frustumCulled={false}>
-      <planeGeometry args={[2, 2]} />
-      <shaderMaterial
-        ref={matRef}
-        uniforms={uniforms}
-        vertexShader={vertexShader}
-        fragmentShader={fragmentShader}
-      />
-    </mesh>
-  );
-}
-
-/**
- * Mounts the lava background as a fixed full-screen layer.
- * Uses a CSS gradient fallback while WebGL initializes (and as fallback for no-GPU).
+ * Surrounding live-fire ambience BEHIND the board.
+ * The board itself already shows the realistic 3D coal+glass image,
+ * so this layer only adds a deeper coal field around it with rising
+ * embers, drifting heat hot-spots and flame licks at the bottom edge,
+ * making the whole screen feel like one continuous burning environment.
  */
 export function LavaBackground() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d", { alpha: true });
+    if (!ctx) return;
+
+    let raf = 0;
+    let w = 0;
+    let h = 0;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    const resize = () => {
+      w = window.innerWidth;
+      h = window.innerHeight;
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+    resize();
+    window.addEventListener("resize", resize);
+
+    interface Ember {
+      x: number; y: number; vx: number; vy: number;
+      life: number; maxLife: number; size: number; hue: number;
+    }
+    const embers: Ember[] = [];
+    const MAX_EMBERS = 110;
+
+    const spawn = () => {
+      embers.push({
+        x: Math.random() * w,
+        y: h + 10,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: -(0.6 + Math.random() * 1.8),
+        life: 0,
+        maxLife: 140 + Math.random() * 240,
+        size: 0.8 + Math.random() * 2.4,
+        hue: 18 + Math.random() * 22,
+      });
+    };
+
+    let t = 0;
+    const render = () => {
+      t += 1;
+      ctx.clearRect(0, 0, w, h);
+
+      // Drifting hot-spot lights
+      const drift = t * 0.0015;
+      for (let i = 0; i < 4; i++) {
+        const cx = (Math.sin(drift + i * 1.7) * 0.45 + 0.5) * w;
+        const cy = (Math.cos(drift * 1.3 + i * 2.1) * 0.45 + 0.5) * h;
+        const r = Math.min(w, h) * (0.22 + 0.06 * Math.sin(t * 0.02 + i));
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+        grad.addColorStop(0, `hsla(${18 + i * 5}, 95%, 55%, 0.22)`);
+        grad.addColorStop(1, "hsla(0, 0%, 0%, 0)");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+      }
+
+      // Embers
+      if (embers.length < MAX_EMBERS && Math.random() < 0.7) spawn();
+      if (embers.length < MAX_EMBERS && Math.random() < 0.7) spawn();
+      for (let i = embers.length - 1; i >= 0; i--) {
+        const e = embers[i];
+        e.life += 1;
+        e.x += e.vx + Math.sin((e.y + t) * 0.02) * 0.35;
+        e.y += e.vy;
+        e.vy *= 0.998;
+        const lifeRatio = e.life / e.maxLife;
+        if (lifeRatio >= 1 || e.y < -10) { embers.splice(i, 1); continue; }
+        const alpha = (1 - lifeRatio) * 0.95;
+        const size = e.size * (1 - lifeRatio * 0.4);
+        const glow = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, size * 9);
+        glow.addColorStop(0, `hsla(${e.hue}, 100%, 70%, ${alpha * 0.75})`);
+        glow.addColorStop(0.4, `hsla(${e.hue - 5}, 100%, 50%, ${alpha * 0.3})`);
+        glow.addColorStop(1, "hsla(0,0%,0%,0)");
+        ctx.fillStyle = glow;
+        ctx.beginPath(); ctx.arc(e.x, e.y, size * 9, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = `hsla(${e.hue + 15}, 100%, 88%, ${alpha})`;
+        ctx.beginPath(); ctx.arc(e.x, e.y, size, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // Bottom flame licks
+      const flameCount = 22;
+      for (let i = 0; i < flameCount; i++) {
+        const fx = (i / flameCount) * w + Math.sin(t * 0.04 + i) * 22;
+        const baseY = h;
+        const flameH = 70 + Math.sin(t * 0.06 + i * 1.3) * 35 + Math.random() * 20;
+        const flameW = 50 + Math.sin(t * 0.05 + i) * 18;
+        const grad = ctx.createLinearGradient(fx, baseY, fx, baseY - flameH);
+        grad.addColorStop(0, "hsla(20, 100%, 55%, 0.5)");
+        grad.addColorStop(0.5, "hsla(15, 100%, 50%, 0.22)");
+        grad.addColorStop(1, "hsla(0, 80%, 30%, 0)");
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.ellipse(fx, baseY - flameH * 0.4, flameW, flameH, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Top edge fire glow
+      const topGrad = ctx.createLinearGradient(0, 0, 0, 140);
+      topGrad.addColorStop(0, "hsla(18, 100%, 50%, 0.22)");
+      topGrad.addColorStop(1, "hsla(0,0%,0%,0)");
+      ctx.fillStyle = topGrad;
+      ctx.fillRect(0, 0, w, 140);
+
+      raf = requestAnimationFrame(render);
+    };
+    raf = requestAnimationFrame(render);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", resize);
+    };
+  }, []);
+
   return (
     <div className="fixed inset-0 -z-20 overflow-hidden pointer-events-none">
-      {/* CSS fallback: deep volcanic gradient with crack-like lines */}
+      {/* Deep coal field — extends the board's burning environment to full screen */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse at 30% 20%, hsl(15 90% 22%), transparent 55%)," +
-            "radial-gradient(ellipse at 70% 80%, hsl(8 95% 18%), transparent 55%)," +
-            "linear-gradient(160deg, hsl(15 50% 5%), hsl(0 60% 4%) 60%, hsl(20 70% 6%))",
+            "radial-gradient(ellipse at 30% 20%, hsl(15 70% 14%), transparent 50%)," +
+            "radial-gradient(ellipse at 70% 80%, hsl(8 80% 10%), transparent 55%)," +
+            "radial-gradient(ellipse at 50% 50%, hsl(20 60% 8%), hsl(0 70% 4%) 70%)," +
+            "linear-gradient(160deg, hsl(15 50% 5%), hsl(0 60% 3%) 60%, hsl(20 70% 5%))",
         }}
       />
-      <Canvas
-        gl={{ antialias: false, powerPreference: "high-performance", alpha: false }}
-        dpr={[1, 1.5]}
-        camera={{ position: [0, 0, 1] }}
-        className="absolute inset-0"
-      >
-        <LavaPlane />
-      </Canvas>
-      {/* Subtle dark overlay so the board pops */}
+      {/* Glowing coal crackle pattern */}
+      <div
+        className="absolute inset-0 opacity-60 animate-coal-breathe"
+        style={{
+          backgroundImage: `
+            radial-gradient(circle at 20% 30%, hsl(20 100% 50% / 0.45) 0px, transparent 4px),
+            radial-gradient(circle at 60% 70%, hsl(15 100% 55% / 0.4) 0px, transparent 5px),
+            radial-gradient(circle at 80% 20%, hsl(25 100% 60% / 0.35) 0px, transparent 3px),
+            radial-gradient(circle at 35% 85%, hsl(18 100% 55% / 0.4) 0px, transparent 5px),
+            radial-gradient(circle at 90% 60%, hsl(22 100% 50% / 0.35) 0px, transparent 4px),
+            radial-gradient(circle at 10% 70%, hsl(15 100% 50% / 0.4) 0px, transparent 4px),
+            radial-gradient(circle at 50% 10%, hsl(20 100% 55% / 0.3) 0px, transparent 3px)
+          `,
+          backgroundSize: "180px 180px, 220px 220px, 150px 150px, 200px 200px, 170px 170px, 190px 190px, 160px 160px",
+        }}
+      />
+      {/* Live fire + embers + heat */}
+      <canvas ref={canvasRef} className="absolute inset-0 mix-blend-screen" />
+      {/* Vignette */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse at center, transparent 30%, hsl(0 0% 0% / 0.55) 100%)",
+            "radial-gradient(ellipse at center, transparent 30%, hsl(0 0% 0% / 0.6) 100%)",
         }}
       />
     </div>
