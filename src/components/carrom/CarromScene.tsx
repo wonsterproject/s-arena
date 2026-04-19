@@ -20,6 +20,7 @@ export interface CarromSceneApi {
   shoot: (dirX: number, dirZ: number, power01: number) => void;
   respawnQueen: () => void;
   getStrikerPos: () => { x: number; z: number };
+  onCollision: (cb: (info: { speed: number; isStrikerHit: boolean }) => void) => () => void;
 }
 
 function CameraFit() {
