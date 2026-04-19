@@ -254,22 +254,27 @@ function SceneInner({ onReady, onShotResolved, currentSide, shooting, interactiv
 
     if (shotInProgress.current) {
       shotTimer.current += dt;
+
+      const pocketState = phys.checkPockets();
+      for (const id of pocketState.piecesPocketed) shotPocketedIds.current.add(id);
+      if (pocketState.strikerPocketed) shotStrikerPocketed.current = true;
+
       if (phys.isAtRest()) {
         restCounter.current += dt;
         if (restCounter.current > 0.25 || shotTimer.current > 8) {
           shotInProgress.current = false;
-          const { piecesPocketed, strikerPocketed } = phys.checkPockets();
           const log = phys.getShotLog();
           onShotResolved({
-            piecesPocketed,
-            strikerPocketed,
+            piecesPocketed: Array.from(shotPocketedIds.current),
+            strikerPocketed: shotStrikerPocketed.current,
             hitAny: log.hitAny,
             firstContact: log.firstContact,
           });
+          shotPocketedIds.current.clear();
+          shotStrikerPocketed.current = false;
         }
       } else {
         restCounter.current = 0;
-        phys.checkPockets();
       }
     }
   });
