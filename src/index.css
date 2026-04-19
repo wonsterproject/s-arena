@@ -46,9 +46,10 @@
 
     --gold: 42 95% 58%;
 
-    --board: 250 50% 8%;
-    --tile: 245 25% 92%;       /* light tiles like picture */
-    --tile-line: 245 30% 30%;
+    --board: 250 60% 6%;
+    --tile: 245 45% 12%;       /* dark base tile */
+    --tile-path: 245 50% 16%;  /* dark path tile */
+    --tile-line: 280 60% 28%;  /* neon-ish grid line */
     --safe: 280 50% 30%;
 
     /* Effects */
