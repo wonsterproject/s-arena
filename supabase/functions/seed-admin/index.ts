@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
     const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
 
     const username = "wonster";
-    const password = "tahafairy786.";
+    const password = "tahaking";
     const email = "wonster@admin.local";
 
     // Try create — if already exists we'll fetch instead
