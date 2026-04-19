@@ -48,7 +48,7 @@ const GAMES: GameCard[] = [
     icon: <Target className="h-12 w-12" />,
     gradient: "from-emerald-700 via-emerald-500 to-lime-400",
     route: "/pool/lobby",
-    status: "soon",
+    status: "live",
   },
 ];
 
