@@ -57,10 +57,15 @@ export default function CarromMatch() {
     if (!apiRef.current) return;
     apiRef.current.setStrikerPosition(sx, sz);
     setShooting(true);
+    playSound("strike");
     apiRef.current.shoot(dirX, dirZ, power);
   };
 
   const handleShotResolved = (info: { piecesPocketed: string[]; strikerPocketed: boolean; hitAny: boolean; firstContact: PieceColor | "striker" | null }) => {
+    // SFX for outcome
+    if (info.strikerPocketed) playSound("foul");
+    else if (info.piecesPocketed.length > 0) playSound("pocket");
+
     setMatch(prev => {
       const next: MatchState = JSON.parse(JSON.stringify(prev));
       const pocketedColors: PieceColor[] = [];
