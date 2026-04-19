@@ -227,6 +227,11 @@ export function createPhysicsWorld(
       }
       if (checkBody(striker)) {
         strikerPocketed = true;
+        // Remove striker from play immediately so it doesn't bounce out of the pocket
+        striker.position.set(-20 - Math.random(), -5, -20);
+        striker.velocity.set(0, 0, 0);
+        striker.angularVelocity.set(0, 0, 0);
+        striker.sleep();
       }
       return { piecesPocketed, strikerPocketed };
     },
