@@ -250,7 +250,7 @@ export default function PoolMatch() {
         <GameTopBar
           title={titleText}
           infoText={infoText}
-          infoColor={meCount.label ? `${meCount.color} / 0.65` : undefined}
+          infoColor={meCount.label ? meCount.colorAlpha : undefined}
           onBack={() => navigate("/pool/lobby")}
           onRestart={restart}
         />
