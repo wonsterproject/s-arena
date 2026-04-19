@@ -150,7 +150,7 @@ export default function Lobby() {
   };
 
   const startBotMatch = async () => {
-    if (!user) return;
+    if (!user || creating) return;
     setCreating(true);
     try {
       let matchId: string | null = null;
