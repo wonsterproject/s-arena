@@ -272,57 +272,26 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
                         key={t.id}
                         onClick={() => movable && onTokenClick(t.id)}
                         disabled={!movable}
-                        className={`pointer-events-auto absolute left-1/2 top-1/2 flex items-center justify-center transition-all duration-300 animate-token-pop ${
+                        className={`pointer-events-auto absolute left-1/2 top-1/2 transition-all duration-300 animate-token-pop ${
                           movable ? "cursor-pointer animate-tile-highlight" : "cursor-default"
                         } ${killed ? "animate-kill" : ""}`}
                         style={{
-                          width: "78%",
-                          height: "78%",
-                          transform: `translate(calc(-50% + ${offset}%), calc(-50% + ${offsetY}%)) ${
+                          width: "85%",
+                          height: "100%",
+                          background: "transparent",
+                          border: "none",
+                          padding: 0,
+                          transform: `translate(calc(-50% + ${offset}%), calc(-50% + ${offsetY}% - 8%)) ${
                             movable ? "scale(1.08)" : ""
                           }`,
-                          /* Pawn/dome 3D look matching reference picture */
-                          borderRadius: "55% 55% 50% 50% / 65% 65% 35% 35%",
-                          background: `
-                            radial-gradient(ellipse at 32% 22%, hsl(0 0% 100% / 0.95), hsl(0 0% 100% / 0.25) 30%, transparent 55%),
-                            linear-gradient(160deg, ${c}, hsl(0 0% 0% / 0.45) 110%)
-                          `,
-                          boxShadow: `
-                            0 6px 10px hsl(0 0% 0% / 0.55),
-                            0 1px 0 hsl(0 0% 100% / 0.2) inset,
-                            0 -3px 6px hsl(0 0% 0% / 0.35) inset,
-                            0 0 0 1.5px hsl(45 100% 60% / 0.85),
-                            ${movable ? `0 0 16px ${c}, 0 0 28px ${c}88` : `0 0 6px ${c}55`}
-                          `,
+                          filter: movable
+                            ? `drop-shadow(0 0 10px ${c}) drop-shadow(0 4px 6px hsl(0 0% 0% / 0.6))`
+                            : `drop-shadow(0 3px 4px hsl(0 0% 0% / 0.55))`,
                           zIndex: 10 + i,
                         }}
                         aria-label={`${t.player} token`}
                       >
-                        {/* Gold rim highlight */}
-                        <span
-                          className="absolute left-1/2 -translate-x-1/2"
-                          style={{
-                            bottom: "18%",
-                            width: "70%",
-                            height: "8%",
-                            background: "linear-gradient(180deg, hsl(45 100% 75%), hsl(38 100% 50%))",
-                            borderRadius: "999px",
-                            boxShadow: "0 1px 0 hsl(0 0% 0% / 0.3), 0 0 6px hsl(45 100% 60% / 0.7)",
-                          }}
-                        />
-                        {/* Top sheen */}
-                        <span
-                          className="absolute"
-                          style={{
-                            top: "12%",
-                            left: "22%",
-                            width: "32%",
-                            height: "22%",
-                            background: "radial-gradient(ellipse, hsl(0 0% 100% / 0.85), transparent 70%)",
-                            borderRadius: "50%",
-                            filter: "blur(0.5px)",
-                          }}
-                        />
+                        <PawnSVG color={c} />
                       </button>
                     );
                   })}
