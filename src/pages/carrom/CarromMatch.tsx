@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Trophy } from "lucide-react";
+import { Trophy, BookOpen, Volume2, VolumeX, X } from "lucide-react";
 import CarromScene, { type CarromSceneApi } from "@/components/carrom/CarromScene";
 import { createMatch, resolveShot } from "@/game/carrom/rules";
 import { planBotShot, type Difficulty } from "@/game/carrom/bot";
 import { BOARD, type PieceColor } from "@/game/carrom/constants";
 import type { MatchState } from "@/game/carrom/types";
 import GameTopBar from "@/components/game/GameTopBar";
+import { useCarromSounds } from "@/game/carrom/useCarromSounds";
 
 export default function CarromMatch() {
   const navigate = useNavigate();
@@ -23,12 +24,26 @@ export default function CarromMatch() {
     ),
   );
   const [shooting, setShooting] = useState(false);
+  const [soundOn, setSoundOn] = useState(true);
+  const [showRules, setShowRules] = useState(false);
+  const playSound = useCarromSounds(soundOn);
+  const collisionUnsubRef = useRef<(() => void) | null>(null);
+  const lastCollideAt = useRef(0);
 
   useEffect(() => {
     if (!apiRef.current) return;
     const z = match.turn === 0 ? BOARD.baselineY : -BOARD.baselineY;
     apiRef.current.setStrikerPosition(0, z);
   }, [match.turn]);
+
+  // Win sound (plays once when winner is decided)
+  useEffect(() => {
+    if (match.winner !== null) playSound("win");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [match.winner]);
+
+  // Cleanup collision subscription on unmount
+  useEffect(() => () => { collisionUnsubRef.current?.(); }, []);
 
   useEffect(() => {
     if (match.winner !== null) return;
@@ -51,10 +66,15 @@ export default function CarromMatch() {
     if (!apiRef.current) return;
     apiRef.current.setStrikerPosition(sx, sz);
     setShooting(true);
+    playSound("strike");
     apiRef.current.shoot(dirX, dirZ, power);
   };
 
   const handleShotResolved = (info: { piecesPocketed: string[]; strikerPocketed: boolean; hitAny: boolean; firstContact: PieceColor | "striker" | null }) => {
+    // SFX for outcome
+    if (info.strikerPocketed) playSound("foul");
+    else if (info.piecesPocketed.length > 0) playSound("pocket");
+
     setMatch(prev => {
       const next: MatchState = JSON.parse(JSON.stringify(prev));
       const pocketedColors: PieceColor[] = [];
@@ -134,7 +154,7 @@ export default function CarromMatch() {
           onRestart={restart}
         />
 
-        {/* Compact status strip: scores + colors */}
+        {/* Compact status strip: scores + colors + sound/rules buttons */}
         <div className="flex items-center justify-between gap-2 px-3 py-1.5 mb-1 rounded-xl text-xs"
           style={{
             background: "linear-gradient(180deg, hsl(232 50% 14% / 0.9), hsl(232 55% 8% / 0.9))",
@@ -147,9 +167,26 @@ export default function CarromMatch() {
             <span className="text-amber-300">{you.score}</span>
             {you.queenCovered && <span className="text-red-400">♛</span>}
           </div>
-          <div className="text-[10px] uppercase tracking-wider text-indigo-200/70">
-            {colorsAssigned ? `${you.color} vs ${opp.color}` : "colors unclaimed"}
+
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setShowRules(true)}
+              aria-label="Show rules"
+              className="h-7 w-7 grid place-items-center rounded-lg text-white/90 hover:text-white transition"
+              style={{ background: "hsl(232 50% 22% / 0.7)", boxShadow: "0 0 0 1px hsl(45 100% 60% / 0.3) inset" }}
+            >
+              <BookOpen className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => setSoundOn(s => !s)}
+              aria-label={soundOn ? "Mute" : "Unmute"}
+              className="h-7 w-7 grid place-items-center rounded-lg text-white/90 hover:text-white transition"
+              style={{ background: "hsl(232 50% 22% / 0.7)", boxShadow: "0 0 0 1px hsl(45 100% 60% / 0.3) inset" }}
+            >
+              {soundOn ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+            </button>
           </div>
+
           <div className="flex items-center gap-1.5 font-bold text-white">
             {opp.queenCovered && <span className="text-red-400">♛</span>}
             <span className="text-amber-300">{opp.score}</span>
@@ -170,7 +207,18 @@ export default function CarromMatch() {
             }}
           >
             <CarromScene
-              onReady={(api) => { apiRef.current = api; api.setStrikerPosition(0, BOARD.baselineY); }}
+              onReady={(api) => {
+                apiRef.current = api;
+                api.setStrikerPosition(0, BOARD.baselineY);
+                collisionUnsubRef.current?.();
+                collisionUnsubRef.current = api.onCollision(({ speed }) => {
+                  // Throttle collision SFX so we don't spam during multi-bounces
+                  const now = performance.now();
+                  if (now - lastCollideAt.current < 55) return;
+                  lastCollideAt.current = now;
+                  if (speed > 0.5) playSound("collide");
+                });
+              }}
               onShotResolved={handleShotResolved}
               currentSide={match.turn}
               shooting={shooting}
@@ -203,6 +251,72 @@ export default function CarromMatch() {
           </div>
         )}
       </div>
+
+      {showRules && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center p-4"
+          style={{ background: "rgba(0,0,0,0.7)" }}
+          onClick={() => setShowRules(false)}
+        >
+          <div
+            className="max-w-md w-full max-h-[85vh] overflow-y-auto rounded-2xl p-5 text-white text-sm"
+            style={{
+              background: "linear-gradient(180deg, hsl(232 55% 14%), hsl(232 60% 7%))",
+              boxShadow: "0 0 0 2px hsl(45 100% 60% / 0.5) inset, 0 12px 40px rgba(0,0,0,0.7)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-black tracking-wide flex items-center gap-2">
+                <BookOpen className="h-4 w-4 text-amber-300" /> Carrom Rules
+              </h3>
+              <button
+                onClick={() => setShowRules(false)}
+                aria-label="Close"
+                className="h-8 w-8 grid place-items-center rounded-lg text-white/80 hover:text-white"
+                style={{ background: "hsl(232 50% 22%)" }}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <ul className="space-y-2.5 leading-snug">
+              <li>
+                <span className="text-amber-300 font-bold">⚪ Color assignment:</span>{" "}
+                The first player to pocket a coin gets that color (white or black). Opponent gets the other.
+              </li>
+              <li>
+                <span className="text-amber-300 font-bold">🎯 Goal:</span>{" "}
+                Pocket all your coins AND cover the red queen to win.
+              </li>
+              <li>
+                <span className="text-amber-300 font-bold">👑 Queen rule:</span>{" "}
+                After pocketing the queen, you must pocket one of your own coins on the same or next shot to "cover" it. If you fail, the queen returns to center.
+              </li>
+              <li>
+                <span className="text-amber-300 font-bold">🔁 Turn:</span>{" "}
+                Pocket your color → continue. Miss or foul → opponent's turn.
+              </li>
+              <li>
+                <span className="text-amber-300 font-bold">❌ Fouls (-1 point):</span>
+                <ul className="ml-4 mt-1 space-y-1 list-disc text-white/85">
+                  <li>Striker pocketed</li>
+                  <li>Striker hits nothing</li>
+                  <li>You hit opponent's coin first</li>
+                  <li>You pocket opponent's coin</li>
+                </ul>
+              </li>
+              <li>
+                <span className="text-amber-300 font-bold">📊 Scoring:</span>{" "}
+                1 point per own coin. Queen bonus: +3 (only when covered).
+              </li>
+              <li>
+                <span className="text-amber-300 font-bold">🎮 Controls:</span>{" "}
+                Drag the striker left/right to position, then pull back to aim and release to shoot. Longer pull = more power.
+              </li>
+            </ul>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

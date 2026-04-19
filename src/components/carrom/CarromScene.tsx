@@ -20,6 +20,7 @@ export interface CarromSceneApi {
   shoot: (dirX: number, dirZ: number, power01: number) => void;
   respawnQueen: () => void;
   getStrikerPos: () => { x: number; z: number };
+  onCollision: (cb: (info: { speed: number; isStrikerHit: boolean }) => void) => () => void;
 }
 
 function CameraFit() {
@@ -91,6 +92,7 @@ function SceneInner({ onReady, onShotResolved, currentSide, shooting, interactiv
         }
       },
       getStrikerPos: () => ({ x: phys.striker.position.x, z: phys.striker.position.z }),
+      onCollision: (cb) => phys.onCollision(cb),
     };
     (api as any)._piecesSnapshot = () => phys.pieces.map(p => ({
       id: p.id, color: p.color, pocketed: p.pocketed,
