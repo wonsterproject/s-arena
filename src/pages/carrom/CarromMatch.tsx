@@ -251,6 +251,72 @@ export default function CarromMatch() {
           </div>
         )}
       </div>
+
+      {showRules && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center p-4"
+          style={{ background: "rgba(0,0,0,0.7)" }}
+          onClick={() => setShowRules(false)}
+        >
+          <div
+            className="max-w-md w-full max-h-[85vh] overflow-y-auto rounded-2xl p-5 text-white text-sm"
+            style={{
+              background: "linear-gradient(180deg, hsl(232 55% 14%), hsl(232 60% 7%))",
+              boxShadow: "0 0 0 2px hsl(45 100% 60% / 0.5) inset, 0 12px 40px rgba(0,0,0,0.7)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-black tracking-wide flex items-center gap-2">
+                <BookOpen className="h-4 w-4 text-amber-300" /> Carrom Rules
+              </h3>
+              <button
+                onClick={() => setShowRules(false)}
+                aria-label="Close"
+                className="h-8 w-8 grid place-items-center rounded-lg text-white/80 hover:text-white"
+                style={{ background: "hsl(232 50% 22%)" }}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <ul className="space-y-2.5 leading-snug">
+              <li>
+                <span className="text-amber-300 font-bold">⚪ Color assignment:</span>{" "}
+                The first player to pocket a coin gets that color (white or black). Opponent gets the other.
+              </li>
+              <li>
+                <span className="text-amber-300 font-bold">🎯 Goal:</span>{" "}
+                Pocket all your coins AND cover the red queen to win.
+              </li>
+              <li>
+                <span className="text-amber-300 font-bold">👑 Queen rule:</span>{" "}
+                After pocketing the queen, you must pocket one of your own coins on the same or next shot to "cover" it. If you fail, the queen returns to center.
+              </li>
+              <li>
+                <span className="text-amber-300 font-bold">🔁 Turn:</span>{" "}
+                Pocket your color → continue. Miss or foul → opponent's turn.
+              </li>
+              <li>
+                <span className="text-amber-300 font-bold">❌ Fouls (-1 point):</span>
+                <ul className="ml-4 mt-1 space-y-1 list-disc text-white/85">
+                  <li>Striker pocketed</li>
+                  <li>Striker hits nothing</li>
+                  <li>You hit opponent's coin first</li>
+                  <li>You pocket opponent's coin</li>
+                </ul>
+              </li>
+              <li>
+                <span className="text-amber-300 font-bold">📊 Scoring:</span>{" "}
+                1 point per own coin. Queen bonus: +3 (only when covered).
+              </li>
+              <li>
+                <span className="text-amber-300 font-bold">🎮 Controls:</span>{" "}
+                Drag the striker left/right to position, then pull back to aim and release to shoot. Longer pull = more power.
+              </li>
+            </ul>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
