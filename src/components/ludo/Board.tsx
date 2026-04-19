@@ -341,3 +341,66 @@ function SkipCellGlow() {
     </div>
   );
 }
+
+/** Realistic Ludo pawn (gōti): wide pedestal base + neck + dome head, with gold rim & sheen. */
+function PawnSVG({ color }: { color: string }) {
+  const uid = `pwn-${Math.random().toString(36).slice(2, 8)}`;
+  return (
+    <svg viewBox="0 0 100 130" className="block h-full w-full" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <radialGradient id={`${uid}-dome`} cx="38%" cy="30%" r="70%">
+          <stop offset="0%" stopColor="hsl(0 0% 100%)" stopOpacity="0.95" />
+          <stop offset="22%" stopColor={color} stopOpacity="0.95" />
+          <stop offset="100%" stopColor="hsl(0 0% 0%)" stopOpacity="0.55" />
+        </radialGradient>
+        <linearGradient id={`${uid}-body`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} />
+          <stop offset="55%" stopColor={color} />
+          <stop offset="100%" stopColor="hsl(0 0% 0%)" stopOpacity="0.6" />
+        </linearGradient>
+        <linearGradient id={`${uid}-gold`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="hsl(45 100% 80%)" />
+          <stop offset="50%" stopColor="hsl(42 100% 58%)" />
+          <stop offset="100%" stopColor="hsl(32 95% 38%)" />
+        </linearGradient>
+        <radialGradient id={`${uid}-base`} cx="50%" cy="40%" r="65%">
+          <stop offset="0%" stopColor={color} />
+          <stop offset="70%" stopColor={color} stopOpacity="0.9" />
+          <stop offset="100%" stopColor="hsl(0 0% 0%)" stopOpacity="0.7" />
+        </radialGradient>
+      </defs>
+
+      {/* shadow */}
+      <ellipse cx="50" cy="122" rx="34" ry="5" fill="hsl(0 0% 0%)" opacity="0.45" />
+
+      {/* pedestal base */}
+      <ellipse cx="50" cy="110" rx="38" ry="11" fill={`url(#${uid}-base)`} stroke={`url(#${uid}-gold)`} strokeWidth="2" />
+      <ellipse cx="50" cy="103" rx="34" ry="6" fill="none" stroke={`url(#${uid}-gold)`} strokeWidth="2.2" />
+
+      {/* neck / shaft */}
+      <path
+        d="M 30 102 C 30 90, 22 78, 32 62 L 68 62 C 78 78, 70 90, 70 102 Z"
+        fill={`url(#${uid}-body)`}
+      />
+      {/* gold collar */}
+      <ellipse cx="50" cy="58" rx="22" ry="5" fill={`url(#${uid}-gold)`} stroke="hsl(30 80% 25%)" strokeWidth="0.8" />
+
+      {/* dome head */}
+      <ellipse cx="50" cy="38" rx="24" ry="26" fill={`url(#${uid}-dome)`} stroke={`url(#${uid}-gold)`} strokeWidth="1.6" />
+
+      {/* top sheen */}
+      <ellipse cx="42" cy="26" rx="10" ry="6" fill="hsl(0 0% 100%)" opacity="0.7" />
+      <ellipse cx="38" cy="22" rx="4" ry="2.5" fill="hsl(0 0% 100%)" opacity="0.95" />
+
+      {/* side highlight */}
+      <path
+        d="M 34 100 C 30 88, 26 78, 34 64"
+        stroke="hsl(0 0% 100%)"
+        strokeOpacity="0.35"
+        strokeWidth="2"
+        fill="none"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
