@@ -67,12 +67,12 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
 
   return (
     <div
-      className="relative aspect-square w-full max-w-[840px] rounded-3xl bg-board p-3 neon-border"
+      className="rainbow-frame aspect-square w-full max-w-[760px]"
       role="grid"
       aria-label="Ludo board"
     >
       <div
-        className="relative grid h-full w-full overflow-hidden rounded-2xl"
+        className="relative grid h-full w-full overflow-hidden rounded-[1.4rem]"
         style={{
           gridTemplateColumns: `repeat(${SIZE}, 1fr)`,
           gridTemplateRows: `repeat(${SIZE}, 1fr)`,

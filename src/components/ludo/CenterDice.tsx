@@ -11,7 +11,7 @@ interface CenterDiceProps {
   color: string;
 }
 
-/** Compact dice that lives in the center of the board. Shows only the active player's color (no name). */
+/** Premium 3D-look dice that lives in the center of the board. */
 export function CenterDice({ value, rolling, onRoll, disabled, color }: CenterDiceProps) {
   const [display, setDisplay] = useState(value);
   useEffect(() => {
@@ -24,19 +24,36 @@ export function CenterDice({ value, rolling, onRoll, disabled, color }: CenterDi
     <button
       onClick={onRoll}
       disabled={disabled || rolling}
-      className="relative flex aspect-square w-[72%] items-center justify-center rounded-2xl transition-transform active:scale-95 disabled:cursor-not-allowed"
+      className="relative flex aspect-square w-[78%] items-center justify-center rounded-2xl transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-70"
       style={{
-        background: `radial-gradient(circle at 30% 25%, hsl(0 0% 100% / 0.18), hsl(0 0% 0% / 0.5)), ${color}22`,
-        boxShadow: `0 0 20px ${color}aa, inset 0 0 12px ${color}55, 0 0 0 2px ${color}`,
+        background: `
+          radial-gradient(circle at 28% 22%, hsl(0 0% 100% / 0.85), hsl(0 0% 100% / 0.4) 22%, hsl(0 0% 100% / 0.15) 45%, hsl(0 0% 0% / 0.4) 100%),
+          linear-gradient(160deg, hsl(0 0% 100%), hsl(0 0% 88%) 60%, hsl(0 0% 75%))
+        `,
+        boxShadow: `
+          0 8px 18px hsl(0 0% 0% / 0.55),
+          0 0 0 2px ${color},
+          0 0 22px ${color}cc,
+          inset 0 -4px 0 hsl(0 0% 0% / 0.18),
+          inset 0 2px 0 hsl(0 0% 100% / 0.6)
+        `,
       }}
       aria-label="Roll dice"
     >
       <Icon
-        className={`h-[60%] w-[60%] ${rolling ? "animate-dice-roll" : "transition-transform"}`}
-        style={{ color }}
-        strokeWidth={2.4}
+        className={`h-[62%] w-[62%] ${rolling ? "animate-dice-roll" : "transition-transform"}`}
+        style={{ color: "hsl(230 60% 12%)" }}
+        strokeWidth={2.6}
       />
-      {/* Color-only indicator dot */}
+      {/* swirl glow underneath */}
+      <span
+        className="pointer-events-none absolute -inset-3 rounded-3xl -z-10"
+        style={{
+          background: `radial-gradient(closest-side, ${color}55, transparent 70%)`,
+          filter: "blur(6px)",
+        }}
+      />
+      {/* color indicator dot */}
       <span
         className="absolute -top-1 -right-1 h-3 w-3 rounded-full"
         style={{ background: color, boxShadow: `0 0 10px ${color}` }}
