@@ -125,16 +125,15 @@ export function resolveShot(state: MatchState, log: ShotEventLog): MatchState {
   }
 
   // Win condition: all of player's color pocketed
+  // Player wins if all their coins are pocketed. Queen cover gives bonus points but
+  // is not required to win the board (queen is forfeited if uncovered at end).
   for (const pl of state.players) {
     if (!pl.color) continue;
     const remaining = state.pieces.filter(p => p.color === pl.color && !p.pocketed).length;
     if (remaining === 0 && !state.queenPocketedPending) {
-      // Must also have queen covered to win (standard rule)
-      if (pl.queenCovered || state.players.every(p => !p.hasQueen)) {
-        state.winner = pl.side;
-        state.message = `${pl.name} wins!`;
-        return state;
-      }
+      state.winner = pl.side;
+      state.message = `${pl.name} wins!`;
+      return state;
     }
   }
 
