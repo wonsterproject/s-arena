@@ -89,6 +89,8 @@ export function createPhysicsWorld(
     // Lock vertical motion + tipping: only XZ translation and Y-axis spin allowed
     body.linearFactor.set(1, 0, 1);
     body.angularFactor.set(0, 1, 0);
+    (body as any).ccdSpeedThreshold = 1;
+    (body as any).ccdIterations = 5;
     world.addBody(body);
     return { id: p.id, color: p.color, body, pocketed: false };
   });
