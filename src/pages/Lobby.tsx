@@ -179,7 +179,7 @@ export default function Lobby() {
   };
 
   const startRandomMatch = async (mode: "1v1" | "2v2" | "random") => {
-    if (!user) return;
+    if (!user || creating) return;
     setCreating(true);
     try {
       const { data: matchId, error } = await supabase.rpc("join_or_create_match", { _mode: mode });
