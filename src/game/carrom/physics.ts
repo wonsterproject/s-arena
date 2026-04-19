@@ -116,16 +116,34 @@ export function createPhysicsWorld(
   (striker as any).ccdIterations = 5;
   world.addBody(striker);
 
-  // Shot log: first contact tracking
+  // Shot log: first contact tracking + collision SFX
   let firstContact: PieceColor | "striker" | null = null;
   let hitAny = false;
+  const collisionSubs: Array<(info: { speed: number; isStrikerHit: boolean }) => void> = [];
+  const emitCollision = (speed: number, isStrikerHit: boolean) => {
+    for (const cb of collisionSubs) cb({ speed, isStrikerHit });
+  };
+
   striker.addEventListener("collide", (e: any) => {
     hitAny = true;
-    if (firstContact !== null) return;
     const other = e.body as CANNON.Body;
     const piece = pieces.find(p => p.body === other);
-    if (piece) firstContact = piece.color;
+    if (piece) {
+      if (firstContact === null) firstContact = piece.color;
+      const sp = striker.velocity.length() + piece.body.velocity.length();
+      if (sp > 0.4) emitCollision(sp, true);
+    }
   });
+  for (const piece of pieces) {
+    piece.body.addEventListener("collide", (e: any) => {
+      const other = e.body as CANNON.Body;
+      const otherPiece = pieces.find(p => p.body === other);
+      if (otherPiece && otherPiece !== piece) {
+        const sp = piece.body.velocity.length() + otherPiece.body.velocity.length();
+        if (sp > 0.5) emitCollision(sp, false);
+      }
+    });
+  }
 
   return {
     world,
