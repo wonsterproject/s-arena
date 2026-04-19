@@ -357,6 +357,7 @@ export default function Lobby() {
               desc="Open Friends tab and tap Invite."
               icon={<Swords className="h-6 w-6" />}
               gradient="from-rose-500/30 to-pink-500/20"
+              loading={creating}
               onClick={() => setTab("friends")}
             />
             <ModeCard
@@ -364,6 +365,7 @@ export default function Lobby() {
               desc="Open Friends tab and tap Invite."
               icon={<Users className="h-6 w-6" />}
               gradient="from-purple-500/30 to-fuchsia-500/20"
+              loading={creating}
               onClick={() => setTab("friends")}
             />
             <ModeCard
