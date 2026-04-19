@@ -5,6 +5,9 @@ interface Props {
   subtitle?: string;
   onBack: () => void;
   onRestart: () => void;
+  /** Optional rich info shown under title (e.g. "5 left • Solids"). Overrides subtitle visual. */
+  infoText?: string;
+  infoColor?: string;
 }
 
 /**
