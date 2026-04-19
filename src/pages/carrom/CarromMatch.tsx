@@ -24,6 +24,11 @@ export default function CarromMatch() {
     ),
   );
   const [shooting, setShooting] = useState(false);
+  const [soundOn, setSoundOn] = useState(true);
+  const [showRules, setShowRules] = useState(false);
+  const playSound = useCarromSounds(soundOn);
+  const collisionUnsubRef = useRef<(() => void) | null>(null);
+  const lastCollideAt = useRef(0);
 
   useEffect(() => {
     if (!apiRef.current) return;
