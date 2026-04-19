@@ -552,17 +552,16 @@ export default function Match() {
         </button>
       </header>
 
-      {/* Main game grid: left cards | board | right cards/actions */}
-      <section className="mx-auto grid max-w-6xl items-center gap-2 sm:gap-4"
-               style={{ gridTemplateColumns: "auto 1fr auto" }}>
-        {/* Left column: red (top) + green (bottom) */}
-        <div className="flex flex-col gap-3 sm:gap-4">
+      {/* Main game grid: on mobile only board; on sm+ side player cards */}
+      <section className="mx-auto flex max-w-6xl items-center justify-center gap-3 sm:gap-4 px-1">
+        {/* Left column: hidden on mobile */}
+        <div className="hidden sm:flex flex-col gap-3 sm:gap-4 shrink-0">
           {renderCard("red")}
           {renderCard("green")}
         </div>
 
-        {/* Board */}
-        <div className="flex justify-center">
+        {/* Board — fills available width on mobile */}
+        <div className="flex w-full max-w-[760px] justify-center">
           <Board
             tokens={state.tokens}
             currentPlayer={state.currentPlayer}
@@ -582,29 +581,10 @@ export default function Match() {
           />
         </div>
 
-        {/* Right column: blue (top) + yellow (bottom) + side actions */}
-        <div className="flex flex-col gap-3 sm:gap-4">
+        {/* Right column: hidden on mobile */}
+        <div className="hidden sm:flex flex-col gap-3 sm:gap-4 shrink-0">
           {renderCard("blue")}
           {renderCard("yellow")}
-          <div className="flex flex-col gap-2 mt-1">
-            <button
-              className="side-action"
-              onClick={() => navigate("/lobby")}
-              aria-label="Restart"
-              title="Back to lobby"
-            >
-              <RotateCcw className="h-5 w-5 mb-0.5" style={{ color: "hsl(45 100% 65%)" }} />
-              <span>Exit</span>
-            </button>
-            <button
-              className="side-action"
-              onClick={() => setSoundOn((s) => !s)}
-              aria-label="Settings"
-            >
-              <Settings className="h-5 w-5 mb-0.5" style={{ color: "hsl(280 95% 75%)" }} />
-              <span>Sound</span>
-            </button>
-          </div>
         </div>
       </section>
 
