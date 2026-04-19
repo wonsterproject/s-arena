@@ -22,6 +22,18 @@ export interface CarromSceneApi {
   getStrikerPos: () => { x: number; z: number };
 }
 
+function CameraFit() {
+  const { camera, size } = useThree();
+  useEffect(() => {
+    const target = BOARD.size + 0.6; // include frame
+    const minDim = Math.min(size.width, size.height);
+    const z = (minDim / target) * 0.98;
+    (camera as THREE.OrthographicCamera).zoom = z;
+    camera.updateProjectionMatrix();
+  }, [camera, size.width, size.height]);
+  return null;
+}
+
 export default function CarromScene(props: Props) {
   return (
     <Canvas shadows dpr={[1, 2]} className="rounded-2xl touch-none" orthographic camera={{ position: [0, 10, 0.001], zoom: 55, near: 0.1, far: 100 }}>
@@ -29,6 +41,7 @@ export default function CarromScene(props: Props) {
       <ambientLight intensity={0.6} />
       <directionalLight position={[5, 10, 5]} intensity={1.3} castShadow shadow-mapSize={[2048, 2048]} />
       <directionalLight position={[-5, 8, -5]} intensity={0.4} />
+      <CameraFit />
       <SceneInner {...props} />
     </Canvas>
   );

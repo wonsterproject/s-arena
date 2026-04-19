@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Trophy, Crown, Disc } from "lucide-react";
+import { Trophy } from "lucide-react";
 import CarromScene, { type CarromSceneApi } from "@/components/carrom/CarromScene";
 import { createMatch, resolveShot } from "@/game/carrom/rules";
 import { planBotShot, type Difficulty } from "@/game/carrom/bot";
 import { BOARD, type PieceColor } from "@/game/carrom/constants";
 import type { MatchState } from "@/game/carrom/types";
 import GameTopBar from "@/components/game/GameTopBar";
-import PlayerInfoCard from "@/components/game/PlayerInfoCard";
 
 export default function CarromMatch() {
   const navigate = useNavigate();
@@ -117,43 +116,13 @@ export default function CarromMatch() {
           onRestart={restart}
         />
 
-        {/* Player cards on top (compact row) */}
-        <div className="grid grid-cols-2 gap-2 mb-2">
-          <PlayerInfoCard
-            name={match.players[0].name}
-            isActive={match.turn === 0}
-            isYou={!match.players[0].isBot}
-            avatarLetter={match.players[0].name[0]?.toUpperCase()}
-            badge={match.players[0].color ?? undefined}
-            badgeColor={match.players[0].color === "white" ? "hsl(45 30% 70%)" : match.players[0].color === "black" ? "hsl(0 0% 18%)" : undefined}
-            stats={[
-              { icon: <Disc className="h-3 w-3 text-amber-400" fill="currentColor" />, value: match.players[0].score },
-              { icon: <Crown className="h-3 w-3 text-red-400" />, value: match.players[0].queenCovered ? 1 : 0 },
-            ]}
-            align="left"
-          />
-          <PlayerInfoCard
-            name={match.players[1].name}
-            isActive={match.turn === 1}
-            isYou={!match.players[1].isBot}
-            avatarLetter={match.players[1].name[0]?.toUpperCase()}
-            badge={match.players[1].color ?? undefined}
-            badgeColor={match.players[1].color === "white" ? "hsl(45 30% 70%)" : match.players[1].color === "black" ? "hsl(0 0% 18%)" : undefined}
-            stats={[
-              { icon: <Disc className="h-3 w-3 text-amber-400" fill="currentColor" />, value: match.players[1].score },
-              { icon: <Crown className="h-3 w-3 text-red-400" />, value: match.players[1].queenCovered ? 1 : 0 },
-            ]}
-            align="right"
-          />
-        </div>
-
         {/* Board fills remaining space, square, centered */}
         <div className="flex-1 flex items-center justify-center min-h-0">
           <div
             className="rounded-2xl overflow-hidden"
             style={{
-              width: "min(100%, calc(100vh - 200px))",
-              height: "min(100%, calc(100vh - 200px))",
+              width: "min(100%, calc(100vh - 110px))",
+              height: "min(100%, calc(100vh - 110px))",
               aspectRatio: "1 / 1",
               boxShadow: "0 0 0 2px hsl(45 100% 60% / 0.4) inset, 0 6px 24px rgba(0,0,0,0.6)",
             }}
