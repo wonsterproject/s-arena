@@ -55,10 +55,10 @@ export function createPhysicsWorld(
   floorBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
   world.addBody(floorBody);
 
-  // Walls (4 sides) — slightly inside the board edge
-  const wallH = 0.5;
-  const wallT = 0.2;
-  const wallLen = BOARD.size + wallT * 2;
+  // Walls (4 sides) — thick & tall so fast pieces never tunnel through
+  const wallH = 1.5;
+  const wallT = 0.6;
+  const wallLen = BOARD.size + wallT * 2 + 0.5;
   const halfPlusGap = BOARD.half + 0.05;
   const makeWall = (x: number, z: number, sx: number, sz: number) => {
     const shape = new CANNON.Box(new CANNON.Vec3(sx, wallH, sz));
