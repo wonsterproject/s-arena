@@ -101,16 +101,17 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
                   : `inset 0 0 0 2px hsl(45 100% 60% / 0.45), inset 0 0 30px hsl(0 0% 0% / 0.25)`,
               }}
             >
-              {/* Inner embossed white well with gold rim */}
+              {/* Inner embossed dark well with gold rim */}
               <div
                 className="absolute inset-[12%] rounded-2xl"
                 style={{
-                  background: "linear-gradient(160deg, hsl(0 0% 100%), hsl(0 0% 92%))",
+                  background: "linear-gradient(160deg, hsl(245 50% 10%), hsl(250 60% 7%))",
                   boxShadow: `
-                    inset 0 0 0 3px hsl(45 100% 60%),
+                    inset 0 0 0 3px hsl(45 100% 58%),
                     inset 0 0 0 5px ${PLAYER_HEX[p]}cc,
-                    inset 0 -4px 8px hsl(0 0% 0% / 0.15),
-                    0 4px 14px hsl(0 0% 0% / 0.4)
+                    inset 0 0 28px ${PLAYER_HEX[p]}55,
+                    inset 0 -4px 10px hsl(0 0% 0% / 0.5),
+                    0 4px 14px hsl(0 0% 0% / 0.5)
                   `,
                 }}
               />
