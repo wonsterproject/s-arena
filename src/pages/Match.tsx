@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import confetti from "canvas-confetti";
-import { Volume2, VolumeX, Trophy, ArrowLeft, Loader2, Clock, Users } from "lucide-react";
+import { Volume2, VolumeX, Trophy, ArrowLeft, Loader2, Clock, Users, RotateCcw, Settings, Sparkles } from "lucide-react";
 import { Board } from "@/components/ludo/Board";
 import { CenterDice } from "@/components/ludo/CenterDice";
 import { MatchChat } from "@/components/ludo/MatchChat";
+import { PlayerCard } from "@/components/ludo/PlayerCard";
+import { AmbientParticles } from "@/components/ludo/AmbientParticles";
 import {
   PLAYERS,
   PLAYER_HEX,
