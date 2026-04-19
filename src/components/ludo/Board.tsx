@@ -135,11 +135,16 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
           });
           if (inQuadrant) return null;
 
-          let bg = "hsl(var(--tile))";
+          let bg = "hsl(var(--tile))"; // light tile (matches picture)
+          let extraStyle: React.CSSProperties = {};
           if (homeColor) {
             bg = `${PLAYER_HEX[homeColor]}`;
+            extraStyle.boxShadow = `inset 0 0 0 1px hsl(0 0% 100% / 0.25), inset 0 -2px 0 hsl(0 0% 0% / 0.2)`;
           } else if (onMain) {
-            bg = "hsl(230 18% 17%)";
+            bg = "hsl(0 0% 100%)";
+            extraStyle.boxShadow = `inset 0 0 0 1px hsl(245 30% 75%)`;
+          } else {
+            extraStyle.boxShadow = `inset 0 0 0 1px hsl(245 30% 80%)`;
           }
 
           return (
@@ -150,26 +155,49 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
                 gridColumn: c + 1,
                 gridRow: r + 1,
                 background: bg,
+                ...extraStyle,
               }}
             >
               {isSafe && !homeColor && (
                 <Star
-                  className="absolute inset-0 m-auto h-3/5 w-3/5 opacity-60"
-                  style={{ color: "hsl(var(--accent))" }}
+                  className="absolute inset-0 m-auto h-3/5 w-3/5"
+                  style={{ color: "hsl(45 100% 55%)", filter: "drop-shadow(0 0 4px hsl(45 100% 60%))" }}
                   fill="currentColor"
                   strokeWidth={1}
                 />
               )}
               {isCenter && (
-                <div
-                  className="absolute inset-0"
-                  style={{ background: "hsl(0 0% 0%)" }}
-                />
+                <div className="absolute inset-0" style={{ background: "hsl(0 0% 0%)" }} />
               )}
               {SKIP_KEYS.has(tileKey(r, c)) && <SkipCellGlow />}
             </div>
           );
         })}
+
+        {/* Center star-burst rays */}
+        <div
+          className="pointer-events-none absolute"
+          style={{
+            left: `${(6 / SIZE) * 100}%`,
+            top: `${(6 / SIZE) * 100}%`,
+            width: `${(3 / SIZE) * 100}%`,
+            height: `${(3 / SIZE) * 100}%`,
+            zIndex: 5,
+          }}
+        >
+          <div
+            className="absolute inset-0 animate-center-rays"
+            style={{
+              background: `conic-gradient(from 0deg,
+                hsl(0 90% 60% / 0.55) 0deg, transparent 45deg,
+                hsl(45 100% 55% / 0.55) 90deg, transparent 135deg,
+                hsl(140 75% 50% / 0.55) 180deg, transparent 225deg,
+                hsl(215 95% 60% / 0.55) 270deg, transparent 315deg)`,
+              borderRadius: "50%",
+              filter: "blur(8px)",
+            }}
+          />
+        </div>
 
         {/* Center content (dice / decoration) */}
         <div
