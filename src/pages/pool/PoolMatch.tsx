@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Trophy, Coins, Circle, CircleDot } from "lucide-react";
+import { Trophy } from "lucide-react";
 import PoolScene, { type PoolSceneApi } from "@/components/pool/PoolScene";
 import { createMatch, resolveShot } from "@/game/pool/rules";
 import { applyShot } from "@/game/pool/physics";
@@ -8,7 +8,6 @@ import { planBotShot, type Difficulty } from "@/game/pool/bot";
 import type { Ball, MatchState, ShotResult } from "@/game/pool/types";
 import { TABLE, BALL, POCKETS, PHYS } from "@/game/pool/constants";
 import GameTopBar from "@/components/game/GameTopBar";
-import PlayerInfoCard from "@/components/game/PlayerInfoCard";
 import VerticalPowerStrip from "@/components/game/VerticalPowerStrip";
 import LandscapeGate from "@/components/pool/LandscapeGate";
 
@@ -215,12 +214,13 @@ export default function PoolMatch() {
 
   const groupCounts = useMemo(() => {
     return match.players.map(p => {
-      if (!p.group) return { remaining: 7, label: "", color: "hsl(232 50% 30%)" };
+      if (!p.group) return { remaining: 7, label: "", color: "hsl(232 50% 30%)", colorAlpha: "hsl(232 50% 30% / 0.5)" };
       const remaining = 7 - p.pottedCount;
       return {
         remaining,
         label: p.group === "solid" ? "Solids" : "Stripes",
         color: p.group === "solid" ? "hsl(215 95% 45%)" : "hsl(28 95% 50%)",
+        colorAlpha: p.group === "solid" ? "hsl(215 95% 55% / 0.65)" : "hsl(28 95% 55% / 0.7)",
       };
     });
   }, [match]);
@@ -228,9 +228,17 @@ export default function PoolMatch() {
   const titleText = match.winner !== null
     ? `${match.players[match.winner].name} wins!`
     : me.isBot ? "Opponent's Turn" : "Your Turn";
-  const subtitle = match.winner !== null
+
+  const meCount = groupCounts[match.turn];
+  const infoText = match.winner !== null
     ? "Game Over"
-    : shooting ? "Shot in progress..." : me.isBot ? "Thinking..." : (match.ballInHand ? "Place Cue Ball" : "Drag to aim, slide power to shoot");
+    : shooting
+      ? "Shot in progress..."
+      : match.ballInHand
+        ? "Place Cue Ball"
+        : meCount.label
+          ? `${meCount.remaining} left • ${meCount.label}`
+          : me.isBot ? "Thinking..." : "Drag to aim, slide power to shoot";
 
   const fireShot = () => sceneRef.current?.shoot();
 
@@ -240,7 +248,8 @@ export default function PoolMatch() {
       <div className="max-w-[1400px] mx-auto">
         <GameTopBar
           title={titleText}
-          subtitle={subtitle}
+          infoText={infoText}
+          infoColor={meCount.label ? meCount.colorAlpha : undefined}
           onBack={() => navigate("/pool/lobby")}
           onRestart={restart}
         />
@@ -278,35 +287,7 @@ export default function PoolMatch() {
           </div>
         )}
 
-        {/* Bottom HUD: just two compact player cards side by side */}
-        <div className="mt-2 grid grid-cols-2 gap-2 sm:gap-3">
-          <PlayerInfoCard
-            name={match.players[0].name}
-            isActive={match.turn === 0}
-            isYou={!match.players[0].isBot}
-            avatarLetter={match.players[0].name[0]?.toUpperCase()}
-            badge={groupCounts[0].label}
-            badgeColor={groupCounts[0].color}
-            stats={[
-              { icon: <Coins className="h-3 w-3 text-amber-400" />, value: 0 },
-              { icon: <Circle className="h-3 w-3 text-orange-400" fill="currentColor" />, value: groupCounts[0].remaining },
-            ]}
-            align="left"
-          />
-          <PlayerInfoCard
-            name={match.players[1].name}
-            isActive={match.turn === 1}
-            isYou={!match.players[1].isBot}
-            avatarLetter={match.players[1].name[0]?.toUpperCase()}
-            badge={groupCounts[1].label}
-            badgeColor={groupCounts[1].color}
-            stats={[
-              { icon: <Coins className="h-3 w-3 text-amber-400" />, value: 0 },
-              { icon: <CircleDot className="h-3 w-3 text-orange-400" />, value: groupCounts[1].remaining },
-            ]}
-            align="right"
-          />
-        </div>
+
 
         {match.winner !== null && (
           <div
