@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, RotateCcw, Crown, Trophy } from "lucide-react";
+import { Trophy, Crown, Coins, Disc } from "lucide-react";
 import CarromScene, { type CarromSceneApi } from "@/components/carrom/CarromScene";
 import { createMatch, resolveShot } from "@/game/carrom/rules";
 import { planBotShot, type Difficulty } from "@/game/carrom/bot";
 import { BOARD, type PieceColor } from "@/game/carrom/constants";
 import type { MatchState } from "@/game/carrom/types";
+import GameTopBar from "@/components/game/GameTopBar";
+import PlayerInfoCard from "@/components/game/PlayerInfoCard";
 
 export default function CarromMatch() {
   const navigate = useNavigate();
@@ -23,14 +25,12 @@ export default function CarromMatch() {
   );
   const [shooting, setShooting] = useState(false);
 
-  // Reset striker on baseline whenever turn changes
   useEffect(() => {
     if (!apiRef.current) return;
     const z = match.turn === 0 ? BOARD.baselineY : -BOARD.baselineY;
     apiRef.current.setStrikerPosition(0, z);
   }, [match.turn]);
 
-  // Bot turn
   useEffect(() => {
     if (match.winner !== null) return;
     const me = match.players[match.turn];
@@ -100,77 +100,144 @@ export default function CarromMatch() {
   const me = match.players[match.turn];
   const isHumanTurn = !me.isBot && !shooting && match.winner === null;
 
+  const titleText = match.winner !== null
+    ? `${match.players[match.winner].name} wins!`
+    : me.isBot ? "Opponent's Turn" : "Your Turn";
+  const subtitle = match.winner !== null
+    ? "Game Over"
+    : shooting ? "Shot in progress..." : me.isBot ? "Thinking..." : "Aiming Shot...";
+
   return (
-    <main className="min-h-screen px-2 py-3">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-          <button onClick={() => navigate("/carrom/lobby")} className="glass-btn h-9 px-3 flex items-center gap-1 text-sm">
-            <ArrowLeft className="h-4 w-4" /> Lobby
-          </button>
-          <div className="glass rounded-full px-4 py-1.5 text-sm font-bold text-center flex-1 min-w-[200px]">
-            {match.message}
+    <main className="min-h-screen px-2 py-3 sm:py-4">
+      <div className="max-w-6xl mx-auto">
+        <GameTopBar
+          title={titleText}
+          subtitle={subtitle}
+          onBack={() => navigate("/carrom/lobby")}
+          onRestart={restart}
+        />
+
+        {/* Layout: side player cards + center board */}
+        <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr_180px] gap-2 sm:gap-3 items-start">
+          {/* Left player */}
+          <div className="hidden sm:block">
+            <PlayerInfoCard
+              name={match.players[0].name}
+              isActive={match.turn === 0}
+              isYou={!match.players[0].isBot}
+              avatarLetter={match.players[0].name[0]?.toUpperCase()}
+              badge={match.players[0].color ?? undefined}
+              badgeColor={match.players[0].color === "white" ? "hsl(45 30% 70%)" : match.players[0].color === "black" ? "hsl(0 0% 18%)" : undefined}
+              stats={[
+                { icon: <Disc className="h-3 w-3 text-amber-400" fill="currentColor" />, value: match.players[0].score },
+                { icon: <Coins className="h-3 w-3 text-amber-400" />, value: match.players[0].queenCovered ? <Crown className="h-3 w-3 inline text-red-400" /> : 0 },
+              ]}
+              align="left"
+            />
           </div>
-          <button onClick={restart} className="glass-btn h-9 px-3 flex items-center gap-1 text-sm">
-            <RotateCcw className="h-4 w-4" /> Restart
-          </button>
+
+          {/* Board */}
+          <div
+            className="aspect-square w-full rounded-2xl overflow-hidden"
+            style={{
+              boxShadow: "0 0 0 2px hsl(45 100% 60% / 0.4) inset, 0 6px 24px rgba(0,0,0,0.6)",
+            }}
+          >
+            <CarromScene
+              onReady={(api) => { apiRef.current = api; api.setStrikerPosition(0, BOARD.baselineY); }}
+              onShotResolved={handleShotResolved}
+              currentSide={match.turn}
+              shooting={shooting}
+              interactive={isHumanTurn}
+              onShootRequest={handleShootRequest}
+            />
+          </div>
+
+          {/* Right player */}
+          <div className="hidden sm:block">
+            <PlayerInfoCard
+              name={match.players[1].name}
+              isActive={match.turn === 1}
+              isYou={!match.players[1].isBot}
+              avatarLetter={match.players[1].name[0]?.toUpperCase()}
+              badge={match.players[1].color ?? undefined}
+              badgeColor={match.players[1].color === "white" ? "hsl(45 30% 70%)" : match.players[1].color === "black" ? "hsl(0 0% 18%)" : undefined}
+              stats={[
+                { icon: <Disc className="h-3 w-3 text-amber-400" fill="currentColor" />, value: match.players[1].score },
+                { icon: <Coins className="h-3 w-3 text-amber-400" />, value: match.players[1].queenCovered ? <Crown className="h-3 w-3 inline text-red-400" /> : 0 },
+              ]}
+              align="right"
+            />
+          </div>
+
+          {/* Mobile: player row below board */}
+          <div className="sm:hidden grid grid-cols-2 gap-2 col-span-1">
+            <PlayerInfoCard
+              name={match.players[0].name}
+              isActive={match.turn === 0}
+              isYou={!match.players[0].isBot}
+              avatarLetter={match.players[0].name[0]?.toUpperCase()}
+              badge={match.players[0].color ?? undefined}
+              badgeColor={match.players[0].color === "white" ? "hsl(45 30% 70%)" : match.players[0].color === "black" ? "hsl(0 0% 18%)" : undefined}
+              stats={[
+                { icon: <Disc className="h-3 w-3 text-amber-400" fill="currentColor" />, value: match.players[0].score },
+              ]}
+              align="left"
+            />
+            <PlayerInfoCard
+              name={match.players[1].name}
+              isActive={match.turn === 1}
+              isYou={!match.players[1].isBot}
+              avatarLetter={match.players[1].name[0]?.toUpperCase()}
+              badge={match.players[1].color ?? undefined}
+              badgeColor={match.players[1].color === "white" ? "hsl(45 30% 70%)" : match.players[1].color === "black" ? "hsl(0 0% 18%)" : undefined}
+              stats={[
+                { icon: <Disc className="h-3 w-3 text-amber-400" fill="currentColor" />, value: match.players[1].score },
+              ]}
+              align="right"
+            />
+          </div>
         </div>
 
-        {/* Players */}
-        <div className="grid grid-cols-2 gap-2 mb-3">
-          {match.players.map((p, i) => (
-            <div key={i} className={`glass rounded-2xl p-3 ring-2 ${match.turn === i ? "ring-primary animate-pulse" : "ring-transparent"}`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-xs text-muted-foreground">{p.isBot ? "Bot" : "Player"} {i + 1}</div>
-                  <div className="font-bold flex items-center gap-1">
-                    {p.name}
-                    {p.queenCovered && <Crown className="h-3 w-3 text-red-500" />}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-2xl font-black">{p.score}</div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    {p.color ?? "—"}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* 3D Scene */}
-        <div className="aspect-square sm:aspect-[4/3] w-full glass rounded-2xl overflow-hidden ring-1 ring-white/10">
-          <CarromScene
-            onReady={(api) => { apiRef.current = api; api.setStrikerPosition(0, BOARD.baselineY); }}
-            onShotResolved={handleShotResolved}
-            currentSide={match.turn}
-            shooting={shooting}
-            interactive={isHumanTurn}
-            onShootRequest={handleShootRequest}
-          />
-        </div>
-
-        {/* Instructions */}
-        <div className="glass rounded-2xl p-4 mt-3 text-center text-sm">
+        {/* Bottom hint bar (Carrom uses in-3D drag, no separate power meter needed) */}
+        <div
+          className="mt-3 rounded-2xl px-4 py-2.5 text-center text-sm font-bold"
+          style={{
+            background: "linear-gradient(180deg, hsl(232 50% 14%), hsl(232 55% 9%))",
+            boxShadow: "0 0 0 1.5px hsl(232 50% 30%) inset",
+          }}
+        >
           {isHumanTurn ? (
-            <div className="space-y-1">
-              <div className="font-bold text-primary">🎯 Drag the striker to aim and shoot</div>
-              <div className="text-xs text-muted-foreground">
-                Touch & hold striker → slide left/right to position → pull back in any direction → release to shoot. Pull farther = more power.
-              </div>
-            </div>
+            <span className="text-indigo-100">
+              🎯 Touch the striker → slide along baseline → pull back & release to strike. Pull farther = more power.
+            </span>
           ) : (
-            <div className="font-bold text-muted-foreground">
+            <span className="text-indigo-300/70">
               {shooting ? "Shot in progress..." : me.isBot ? `${me.name} is thinking...` : "Waiting..."}
-            </div>
+            </span>
           )}
         </div>
 
         {match.winner !== null && (
-          <div className="glass rounded-2xl p-6 mt-3 text-center">
+          <div
+            className="rounded-2xl p-6 mt-3 text-center"
+            style={{
+              background: "linear-gradient(180deg, hsl(232 50% 16%), hsl(232 55% 9%))",
+              boxShadow: "0 0 0 2px hsl(45 100% 60% / 0.5) inset, 0 0 22px hsl(45 100% 60% / 0.3)",
+            }}
+          >
             <Trophy className="h-12 w-12 text-yellow-400 mx-auto mb-2" />
-            <h2 className="text-2xl font-black mb-1">{match.players[match.winner].name} wins!</h2>
-            <button onClick={restart} className="glass-btn mt-3 h-10 px-6 bg-primary/30 font-bold">Play again</button>
+            <h2 className="text-2xl font-black mb-1 text-white">{match.players[match.winner].name} wins!</h2>
+            <button
+              onClick={restart}
+              className="mt-3 h-11 px-7 rounded-2xl font-black text-white"
+              style={{
+                background: "linear-gradient(180deg, hsl(28 100% 60%), hsl(20 100% 45%))",
+                boxShadow: "0 0 0 2px hsl(45 100% 60% / 0.5) inset, 0 4px 12px rgba(0,0,0,0.5)",
+              }}
+            >
+              Play Again
+            </button>
           </div>
         )}
       </div>
