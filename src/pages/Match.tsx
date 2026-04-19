@@ -7,6 +7,7 @@ import { CenterDice } from "@/components/ludo/CenterDice";
 import { MatchChat } from "@/components/ludo/MatchChat";
 import { PlayerCard } from "@/components/ludo/PlayerCard";
 import { AmbientParticles } from "@/components/ludo/AmbientParticles";
+import { LavaBackground } from "@/components/ludo/LavaBackground";
 import {
   PLAYERS,
   PLAYER_HEX,
@@ -494,7 +495,8 @@ export default function Match() {
 
   return (
     <main className="relative min-h-screen px-2 py-3 md:py-5 overflow-hidden">
-      <AmbientParticles />
+      <LavaBackground />
+      <AmbientParticles count={10} />
 
       {/* Top header */}
       <header className="mx-auto mb-3 flex max-w-6xl items-center justify-between px-2">
