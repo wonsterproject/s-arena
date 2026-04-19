@@ -150,7 +150,7 @@ export default function Lobby() {
   };
 
   const startBotMatch = async () => {
-    if (!user || !profile) return;
+    if (!user) return;
     setCreating(true);
     try {
       const { data: matchId, error } = await supabase.rpc("create_bot_match");
