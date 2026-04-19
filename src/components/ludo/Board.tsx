@@ -91,26 +91,37 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
               style={{
                 gridColumn: `${q.cols[0] + 1} / span 6`,
                 gridRow: `${q.rows[0] + 1} / span 6`,
-                background: `linear-gradient(135deg, ${PLAYER_HEX[p]}, ${PLAYER_HEX[p]}cc)`,
+                background: `
+                  radial-gradient(ellipse at 30% 25%, hsl(0 0% 100% / 0.25), transparent 55%),
+                  linear-gradient(135deg, ${PLAYER_HEX[p]}, ${PLAYER_HEX[p]}cc)
+                `,
                 position: "relative",
-                boxShadow: isActive ? `inset 0 0 0 4px hsl(0 0% 100% / 0.55), inset 0 0 40px ${PLAYER_HEX[p]}` : undefined,
+                boxShadow: isActive
+                  ? `inset 0 0 0 4px hsl(45 100% 65% / 0.85), inset 0 0 50px ${PLAYER_HEX[p]}, 0 0 30px ${PLAYER_HEX[p]}aa`
+                  : `inset 0 0 0 2px hsl(45 100% 60% / 0.45), inset 0 0 30px hsl(0 0% 0% / 0.25)`,
               }}
             >
+              {/* Inner embossed white well with gold rim */}
               <div
-                className="absolute inset-[14%] rounded-xl"
+                className="absolute inset-[12%] rounded-2xl"
                 style={{
-                  background: "hsl(var(--board))",
-                  boxShadow: `inset 0 0 0 2px ${PLAYER_HEX[p]}`,
+                  background: "linear-gradient(160deg, hsl(0 0% 100%), hsl(0 0% 92%))",
+                  boxShadow: `
+                    inset 0 0 0 3px hsl(45 100% 60%),
+                    inset 0 0 0 5px ${PLAYER_HEX[p]}cc,
+                    inset 0 -4px 8px hsl(0 0% 0% / 0.15),
+                    0 4px 14px hsl(0 0% 0% / 0.4)
+                  `,
                 }}
               />
               {playerNames?.[p] && (
                 <div
-                  className="absolute left-1/2 top-2 -translate-x-1/2 px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-black tracking-wide whitespace-nowrap max-w-[90%] truncate"
+                  className="absolute left-1/2 bottom-1.5 -translate-x-1/2 px-2 py-0.5 rounded-md text-[9px] sm:text-[10px] font-black tracking-wide whitespace-nowrap max-w-[85%] truncate z-10"
                   style={{
-                    background: "hsl(var(--background) / 0.7)",
-                    color: PLAYER_HEX[p],
+                    background: "hsl(0 0% 0% / 0.55)",
+                    color: "hsl(0 0% 100%)",
                     backdropFilter: "blur(6px)",
-                    boxShadow: `0 0 0 1px ${PLAYER_HEX[p]}55`,
+                    boxShadow: `0 0 0 1px hsl(45 100% 60% / 0.7)`,
                   }}
                 >
                   {playerNames[p]}
