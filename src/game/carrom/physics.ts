@@ -110,6 +110,8 @@ export function createPhysicsWorld(
   striker.position.set(0, STRIKER.height / 2 + 0.01, BOARD.baselineY);
   striker.linearFactor.set(1, 0, 1);
   striker.angularFactor.set(0, 1, 0);
+  (striker as any).ccdSpeedThreshold = 1;
+  (striker as any).ccdIterations = 5;
   world.addBody(striker);
 
   // Shot log: first contact tracking
