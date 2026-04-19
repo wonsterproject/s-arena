@@ -232,6 +232,13 @@ export function createPhysicsWorld(
     },
     resetShotLog() { firstContact = null; hitAny = false; },
     getShotLog() { return { firstContact, hitAny }; },
+    onCollision(cb) {
+      collisionSubs.push(cb);
+      return () => {
+        const i = collisionSubs.indexOf(cb);
+        if (i >= 0) collisionSubs.splice(i, 1);
+      };
+    },
     destroy() {
       // cannon-es has no explicit teardown; let GC handle.
     },
