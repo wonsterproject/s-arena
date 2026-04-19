@@ -14,7 +14,7 @@ interface Props {
  * Premium ornate top bar — center "Your Turn" badge with diamond accents,
  * back/restart on the left, sound/settings buttons on the right.
  */
-export default function GameTopBar({ title, subtitle, onBack, onRestart }: Props) {
+export default function GameTopBar({ title, subtitle, onBack, onRestart, infoText, infoColor }: Props) {
   return (
     <div className="relative flex items-center justify-between gap-2 mb-3 px-1">
       {/* Left controls */}
