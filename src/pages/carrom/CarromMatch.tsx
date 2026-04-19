@@ -108,8 +108,8 @@ export default function CarromMatch() {
     : shooting ? "Shot in progress..." : me.isBot ? "Thinking..." : "Aiming Shot...";
 
   return (
-    <main className="min-h-screen px-2 py-3 sm:py-4">
-      <div className="max-w-6xl mx-auto">
+    <main className="min-h-screen px-2 py-2 sm:py-3 overflow-hidden">
+      <div className="max-w-5xl mx-auto flex flex-col h-screen">
         <GameTopBar
           title={titleText}
           subtitle={subtitle}
@@ -117,29 +117,44 @@ export default function CarromMatch() {
           onRestart={restart}
         />
 
-        {/* Layout: side player cards + center board */}
-        <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr_180px] gap-2 sm:gap-3 items-start">
-          {/* Left player */}
-          <div className="hidden sm:block">
-            <PlayerInfoCard
-              name={match.players[0].name}
-              isActive={match.turn === 0}
-              isYou={!match.players[0].isBot}
-              avatarLetter={match.players[0].name[0]?.toUpperCase()}
-              badge={match.players[0].color ?? undefined}
-              badgeColor={match.players[0].color === "white" ? "hsl(45 30% 70%)" : match.players[0].color === "black" ? "hsl(0 0% 18%)" : undefined}
-              stats={[
-                { icon: <Disc className="h-3 w-3 text-amber-400" fill="currentColor" />, value: match.players[0].score },
-                { icon: <Coins className="h-3 w-3 text-amber-400" />, value: match.players[0].queenCovered ? <Crown className="h-3 w-3 inline text-red-400" /> : 0 },
-              ]}
-              align="left"
-            />
-          </div>
+        {/* Player cards on top (compact row) */}
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          <PlayerInfoCard
+            name={match.players[0].name}
+            isActive={match.turn === 0}
+            isYou={!match.players[0].isBot}
+            avatarLetter={match.players[0].name[0]?.toUpperCase()}
+            badge={match.players[0].color ?? undefined}
+            badgeColor={match.players[0].color === "white" ? "hsl(45 30% 70%)" : match.players[0].color === "black" ? "hsl(0 0% 18%)" : undefined}
+            stats={[
+              { icon: <Disc className="h-3 w-3 text-amber-400" fill="currentColor" />, value: match.players[0].score },
+              { icon: <Crown className="h-3 w-3 text-red-400" />, value: match.players[0].queenCovered ? 1 : 0 },
+            ]}
+            align="left"
+          />
+          <PlayerInfoCard
+            name={match.players[1].name}
+            isActive={match.turn === 1}
+            isYou={!match.players[1].isBot}
+            avatarLetter={match.players[1].name[0]?.toUpperCase()}
+            badge={match.players[1].color ?? undefined}
+            badgeColor={match.players[1].color === "white" ? "hsl(45 30% 70%)" : match.players[1].color === "black" ? "hsl(0 0% 18%)" : undefined}
+            stats={[
+              { icon: <Disc className="h-3 w-3 text-amber-400" fill="currentColor" />, value: match.players[1].score },
+              { icon: <Crown className="h-3 w-3 text-red-400" />, value: match.players[1].queenCovered ? 1 : 0 },
+            ]}
+            align="right"
+          />
+        </div>
 
-          {/* Board */}
+        {/* Board fills remaining space, square, centered */}
+        <div className="flex-1 flex items-center justify-center min-h-0">
           <div
-            className="aspect-square w-full rounded-2xl overflow-hidden"
+            className="rounded-2xl overflow-hidden"
             style={{
+              width: "min(100%, calc(100vh - 200px))",
+              height: "min(100%, calc(100vh - 200px))",
+              aspectRatio: "1 / 1",
               boxShadow: "0 0 0 2px hsl(45 100% 60% / 0.4) inset, 0 6px 24px rgba(0,0,0,0.6)",
             }}
           >
@@ -152,70 +167,6 @@ export default function CarromMatch() {
               onShootRequest={handleShootRequest}
             />
           </div>
-
-          {/* Right player */}
-          <div className="hidden sm:block">
-            <PlayerInfoCard
-              name={match.players[1].name}
-              isActive={match.turn === 1}
-              isYou={!match.players[1].isBot}
-              avatarLetter={match.players[1].name[0]?.toUpperCase()}
-              badge={match.players[1].color ?? undefined}
-              badgeColor={match.players[1].color === "white" ? "hsl(45 30% 70%)" : match.players[1].color === "black" ? "hsl(0 0% 18%)" : undefined}
-              stats={[
-                { icon: <Disc className="h-3 w-3 text-amber-400" fill="currentColor" />, value: match.players[1].score },
-                { icon: <Coins className="h-3 w-3 text-amber-400" />, value: match.players[1].queenCovered ? <Crown className="h-3 w-3 inline text-red-400" /> : 0 },
-              ]}
-              align="right"
-            />
-          </div>
-
-          {/* Mobile: player row below board */}
-          <div className="sm:hidden grid grid-cols-2 gap-2 col-span-1">
-            <PlayerInfoCard
-              name={match.players[0].name}
-              isActive={match.turn === 0}
-              isYou={!match.players[0].isBot}
-              avatarLetter={match.players[0].name[0]?.toUpperCase()}
-              badge={match.players[0].color ?? undefined}
-              badgeColor={match.players[0].color === "white" ? "hsl(45 30% 70%)" : match.players[0].color === "black" ? "hsl(0 0% 18%)" : undefined}
-              stats={[
-                { icon: <Disc className="h-3 w-3 text-amber-400" fill="currentColor" />, value: match.players[0].score },
-              ]}
-              align="left"
-            />
-            <PlayerInfoCard
-              name={match.players[1].name}
-              isActive={match.turn === 1}
-              isYou={!match.players[1].isBot}
-              avatarLetter={match.players[1].name[0]?.toUpperCase()}
-              badge={match.players[1].color ?? undefined}
-              badgeColor={match.players[1].color === "white" ? "hsl(45 30% 70%)" : match.players[1].color === "black" ? "hsl(0 0% 18%)" : undefined}
-              stats={[
-                { icon: <Disc className="h-3 w-3 text-amber-400" fill="currentColor" />, value: match.players[1].score },
-              ]}
-              align="right"
-            />
-          </div>
-        </div>
-
-        {/* Bottom hint bar (Carrom uses in-3D drag, no separate power meter needed) */}
-        <div
-          className="mt-3 rounded-2xl px-4 py-2.5 text-center text-sm font-bold"
-          style={{
-            background: "linear-gradient(180deg, hsl(232 50% 14%), hsl(232 55% 9%))",
-            boxShadow: "0 0 0 1.5px hsl(232 50% 30%) inset",
-          }}
-        >
-          {isHumanTurn ? (
-            <span className="text-indigo-100">
-              🎯 Touch the striker → slide along baseline → pull back & release to strike. Pull farther = more power.
-            </span>
-          ) : (
-            <span className="text-indigo-300/70">
-              {shooting ? "Shot in progress..." : me.isBot ? `${me.name} is thinking...` : "Waiting..."}
-            </span>
-          )}
         </div>
 
         {match.winner !== null && (
