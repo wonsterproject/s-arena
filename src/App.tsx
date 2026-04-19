@@ -22,7 +22,7 @@ import CarromLobby from "./pages/carrom/CarromLobby.tsx";
 import CarromMatch from "./pages/carrom/CarromMatch.tsx";
 import PoolLobby from "./pages/pool/PoolLobby.tsx";
 import PoolMatch from "./pages/pool/PoolMatch.tsx";
-import ComingSoon from "./pages/ComingSoon.tsx";
+
 
 const queryClient = new QueryClient();
 
