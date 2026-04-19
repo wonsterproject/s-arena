@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Trophy } from "lucide-react";
+import { Trophy, BookOpen, Volume2, VolumeX, X } from "lucide-react";
 import CarromScene, { type CarromSceneApi } from "@/components/carrom/CarromScene";
 import { createMatch, resolveShot } from "@/game/carrom/rules";
 import { planBotShot, type Difficulty } from "@/game/carrom/bot";
 import { BOARD, type PieceColor } from "@/game/carrom/constants";
 import type { MatchState } from "@/game/carrom/types";
 import GameTopBar from "@/components/game/GameTopBar";
+import { useCarromSounds } from "@/game/carrom/useCarromSounds";
 
 export default function CarromMatch() {
   const navigate = useNavigate();
