@@ -228,9 +228,17 @@ export default function PoolMatch() {
   const titleText = match.winner !== null
     ? `${match.players[match.winner].name} wins!`
     : me.isBot ? "Opponent's Turn" : "Your Turn";
-  const subtitle = match.winner !== null
+
+  const meCount = groupCounts[match.turn];
+  const infoText = match.winner !== null
     ? "Game Over"
-    : shooting ? "Shot in progress..." : me.isBot ? "Thinking..." : (match.ballInHand ? "Place Cue Ball" : "Drag to aim, slide power to shoot");
+    : shooting
+      ? "Shot in progress..."
+      : match.ballInHand
+        ? "Place Cue Ball"
+        : meCount.label
+          ? `${meCount.remaining} left • ${meCount.label}`
+          : me.isBot ? "Thinking..." : "Drag to aim, slide power to shoot";
 
   const fireShot = () => sceneRef.current?.shoot();
 
@@ -240,7 +248,8 @@ export default function PoolMatch() {
       <div className="max-w-[1400px] mx-auto">
         <GameTopBar
           title={titleText}
-          subtitle={subtitle}
+          infoText={infoText}
+          infoColor={meCount.label ? `${meCount.color} / 0.65` : undefined}
           onBack={() => navigate("/pool/lobby")}
           onRestart={restart}
         />
