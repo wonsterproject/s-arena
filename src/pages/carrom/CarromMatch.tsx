@@ -36,6 +36,15 @@ export default function CarromMatch() {
     apiRef.current.setStrikerPosition(0, z);
   }, [match.turn]);
 
+  // Win sound (plays once when winner is decided)
+  useEffect(() => {
+    if (match.winner !== null) playSound("win");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [match.winner]);
+
+  // Cleanup collision subscription on unmount
+  useEffect(() => () => { collisionUnsubRef.current?.(); }, []);
+
   useEffect(() => {
     if (match.winner !== null) return;
     const me = match.players[match.turn];
