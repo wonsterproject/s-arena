@@ -27,6 +27,8 @@ interface SeatInfo {
   isBot: boolean;
   name: string;
   userId: string | null;
+  avatarUrl: string | null;
+  coins: number | null;
 }
 
 interface GameState {
@@ -108,13 +110,15 @@ export default function Match() {
     setHostId(match.host_id);
     const { data: players } = await supabase
       .from("match_players")
-      .select("color, is_bot, bot_name, user_id, profiles:user_id ( username )")
+      .select("color, is_bot, bot_name, user_id, profiles:user_id ( username, avatar_url, coins )")
       .eq("match_id", matchId);
     const seatList: SeatInfo[] = (players ?? []).map((p: any) => ({
       color: p.color as PlayerColor,
       isBot: p.is_bot,
       name: p.is_bot ? (p.bot_name ?? "Bot") : (p.profiles?.username ?? "Player"),
       userId: p.user_id,
+      avatarUrl: p.is_bot ? null : (p.profiles?.avatar_url ?? null),
+      coins: p.is_bot ? null : (p.profiles?.coins ?? null),
     }));
     seatList.sort((a, b) => PLAYERS.indexOf(a.color) - PLAYERS.indexOf(b.color));
     setSeats(seatList);
