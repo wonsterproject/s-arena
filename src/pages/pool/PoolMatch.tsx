@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, RotateCcw, Trophy } from "lucide-react";
-import PoolScene from "@/components/pool/PoolScene";
+import { Trophy, Coins, Circle, CircleDot } from "lucide-react";
+import PoolScene, { type PoolSceneApi } from "@/components/pool/PoolScene";
 import { createMatch, resolveShot } from "@/game/pool/rules";
 import { applyShot } from "@/game/pool/physics";
 import { planBotShot, type Difficulty } from "@/game/pool/bot";
 import type { Ball, MatchState, ShotResult } from "@/game/pool/types";
 import { TABLE, BALL, POCKETS, PHYS } from "@/game/pool/constants";
+import GameTopBar from "@/components/game/GameTopBar";
+import PlayerInfoCard from "@/components/game/PlayerInfoCard";
+import PowerMeter from "@/components/game/PowerMeter";
 
-// Step the physics one dt; returns whether anything is moving and updates contact info.
+// Same physics step as before — gameplay logic untouched.
 function physicsStep(
   balls: Ball[],
   ctx: { firstContactId: number | null; cushionAfterContact: boolean; hitAny: boolean; pocketed: number[] },
@@ -85,18 +88,22 @@ export default function PoolMatch() {
   const [animBalls, setAnimBalls] = useState<Ball[]>(() => match.balls.map(b => ({ ...b })));
   const [shooting, setShooting] = useState(false);
   const [botHint, setBotHint] = useState<{ dx: number; dz: number } | null>(null);
+  const [power, setPower] = useState(0);
+  const [hasAim, setHasAim] = useState(false);
   const animRef = useRef<number | null>(null);
+  const sceneRef = useRef<PoolSceneApi | null>(null);
 
-  // Sync display balls when match.balls changes (turn end / reset)
   useEffect(() => {
     if (!shooting) setAnimBalls(match.balls.map(b => ({ ...b })));
   }, [match.balls, shooting]);
 
+  // Reset power after each shot
+  useEffect(() => { if (shooting) setPower(0); }, [shooting]);
+
   const me = match.players[match.turn];
   const isHumanTurn = !me.isBot && !shooting && match.winner === null;
 
-  // Run a shot: simulate physics frame-by-frame and animate
-  function runShot(dirX: number, dirZ: number, power: number) {
+  function runShot(dirX: number, dirZ: number, shotPower: number) {
     if (shooting || match.winner !== null) return;
     setShooting(true);
     setBotHint(null);
@@ -104,10 +111,10 @@ export default function PoolMatch() {
     const working: Ball[] = match.balls.map(b => ({ ...b }));
     const cue = working.find(b => b.id === 0)!;
     if (cue.pocketed) { setShooting(false); return; }
-    applyShot(cue, dirX, dirZ, power);
+    applyShot(cue, dirX, dirZ, shotPower);
 
     const ctx = { firstContactId: null as number | null, cushionAfterContact: false, hitAny: false, pocketed: [] as number[] };
-    const subStepsPerFrame = 3; // ~40fps animation, 120Hz physics
+    const subStepsPerFrame = 3;
     const maxFrames = Math.ceil(PHYS.maxSimSeconds * 60);
     let frameCount = 0;
 
@@ -122,7 +129,6 @@ export default function PoolMatch() {
       if (stillMoving && frameCount < maxFrames) {
         animRef.current = requestAnimationFrame(tick);
       } else {
-        // Resolve
         const result: ShotResult = {
           pocketedIds: ctx.pocketed,
           cuePocketed: ctx.pocketed.includes(0),
@@ -172,68 +178,127 @@ export default function PoolMatch() {
     });
   };
 
-  const restart = () => setMatch(createMatch("You", `Bot (${diff})`, 1));
+  const restart = () => {
+    setMatch(createMatch("You", `Bot (${diff})`, 1));
+    setPower(0);
+  };
 
   const groupCounts = useMemo(() => {
     return match.players.map(p => {
-      if (!p.group) return { remaining: 7, label: "Open" };
+      if (!p.group) return { remaining: 7, label: "Open", color: "hsl(232 50% 30%)" };
       const remaining = 7 - p.pottedCount;
-      return { remaining, label: p.group === "solid" ? "Solids 1-7" : "Stripes 9-15" };
+      return {
+        remaining,
+        label: p.group === "solid" ? "Solids" : "Stripes",
+        color: p.group === "solid" ? "hsl(215 95% 45%)" : "hsl(28 95% 50%)",
+      };
     });
   }, [match]);
 
+  const titleText = match.winner !== null
+    ? `${match.players[match.winner].name} wins!`
+    : me.isBot ? "Opponent's Turn" : "Your Turn";
+  const subtitle = match.winner !== null
+    ? "Game Over"
+    : shooting ? "Shot in progress..." : me.isBot ? "Thinking..." : (match.ballInHand ? "Place Cue Ball" : "Aiming Shot...");
+
+  const triggerShot = () => sceneRef.current?.shoot();
+
   return (
-    <main className="min-h-screen px-2 py-3">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-          <button onClick={() => navigate("/pool/lobby")} className="glass-btn h-9 px-3 flex items-center gap-1 text-sm">
-            <ArrowLeft className="h-4 w-4" /> Lobby
-          </button>
-          <div className="glass rounded-full px-4 py-1.5 text-sm font-bold text-center flex-1 min-w-[200px]">
-            {match.message}
-          </div>
-          <button onClick={restart} className="glass-btn h-9 px-3 flex items-center gap-1 text-sm">
-            <RotateCcw className="h-4 w-4" /> Restart
-          </button>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 mb-3">
-          {match.players.map((p, i) => (
-            <div key={i} className={`glass rounded-2xl p-3 ring-2 ${match.turn === i ? "ring-primary animate-pulse" : "ring-transparent"}`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-xs text-muted-foreground">{p.isBot ? "Bot" : "Player"}</div>
-                  <div className="font-bold">{p.name}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground">{groupCounts[i].label}</div>
-                  <div className="text-lg font-black">{groupCounts[i].remaining} left</div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <PoolScene
-          balls={animBalls}
-          interactive={isHumanTurn}
-          ballInHand={match.ballInHand}
-          onShoot={runShot}
-          onPlaceCue={handlePlaceCue}
-          ghostHint={botHint}
+    <main className="min-h-screen px-2 py-3 sm:py-4">
+      <div className="max-w-6xl mx-auto">
+        <GameTopBar
+          title={titleText}
+          subtitle={subtitle}
+          onBack={() => navigate("/pool/lobby")}
+          onRestart={restart}
         />
 
+        {/* Pool table */}
+        <div className="mt-2">
+          <PoolScene
+            ref={sceneRef}
+            balls={animBalls}
+            interactive={isHumanTurn}
+            ballInHand={match.ballInHand}
+            power={power}
+            onShoot={runShot}
+            onPlaceCue={handlePlaceCue}
+            onAimChange={setHasAim}
+            ghostHint={botHint}
+          />
+        </div>
+
         {match.ballInHand && isHumanTurn && (
-          <div className="glass rounded-2xl p-3 mt-3 text-center text-sm font-bold text-amber-400">
-            🖐️ Ball in hand — tap anywhere on the table to place the cue ball, then aim & shoot.
+          <div className="mt-2 rounded-xl px-4 py-2 text-center text-sm font-bold text-amber-300"
+               style={{ background: "hsl(232 50% 12% / 0.85)", boxShadow: "0 0 0 1.5px hsl(45 100% 60% / 0.4) inset" }}>
+            🖐️ Tap anywhere on the table to place the cue ball, then aim.
           </div>
         )}
 
+        {/* Bottom HUD: player cards + power meter */}
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-2 sm:gap-3 items-stretch">
+          <PlayerInfoCard
+            name={match.players[0].name}
+            isActive={match.turn === 0}
+            isYou={!match.players[0].isBot}
+            avatarLetter={match.players[0].name[0]?.toUpperCase()}
+            badge={groupCounts[0].label}
+            badgeColor={groupCounts[0].color}
+            stats={[
+              { icon: <Coins className="h-3 w-3 text-amber-400" />, value: 0 },
+              { icon: <Circle className="h-3 w-3 text-orange-400" fill="currentColor" />, value: groupCounts[0].remaining },
+            ]}
+            align="left"
+          />
+
+          {/* Power meter spans middle on desktop, full width on mobile */}
+          <div className="sm:px-2 flex items-center min-w-0">
+            <PowerMeter
+              power={power}
+              setPower={setPower}
+              onShoot={triggerShot}
+              shootLabel="Shoot"
+              disabled={!isHumanTurn}
+              canShoot={isHumanTurn && hasAim}
+            />
+          </div>
+
+          <PlayerInfoCard
+            name={match.players[1].name}
+            isActive={match.turn === 1}
+            isYou={!match.players[1].isBot}
+            avatarLetter={match.players[1].name[0]?.toUpperCase()}
+            badge={groupCounts[1].label}
+            badgeColor={groupCounts[1].color}
+            stats={[
+              { icon: <Coins className="h-3 w-3 text-amber-400" />, value: 0 },
+              { icon: <CircleDot className="h-3 w-3 text-orange-400" />, value: groupCounts[1].remaining },
+            ]}
+            align="right"
+          />
+        </div>
+
         {match.winner !== null && (
-          <div className="glass rounded-2xl p-6 mt-3 text-center">
+          <div
+            className="rounded-2xl p-6 mt-3 text-center"
+            style={{
+              background: "linear-gradient(180deg, hsl(232 50% 16%), hsl(232 55% 9%))",
+              boxShadow: "0 0 0 2px hsl(45 100% 60% / 0.5) inset, 0 0 22px hsl(45 100% 60% / 0.3)",
+            }}
+          >
             <Trophy className="h-12 w-12 text-yellow-400 mx-auto mb-2" />
-            <h2 className="text-2xl font-black mb-1">{match.players[match.winner].name} wins!</h2>
-            <button onClick={restart} className="glass-btn mt-3 h-10 px-6 bg-primary/30 font-bold">Play again</button>
+            <h2 className="text-2xl font-black mb-1 text-white">{match.players[match.winner].name} wins!</h2>
+            <button
+              onClick={restart}
+              className="mt-3 h-11 px-7 rounded-2xl font-black text-white"
+              style={{
+                background: "linear-gradient(180deg, hsl(28 100% 60%), hsl(20 100% 45%))",
+                boxShadow: "0 0 0 2px hsl(45 100% 60% / 0.5) inset, 0 4px 12px rgba(0,0,0,0.5)",
+              }}
+            >
+              Play Again
+            </button>
           </div>
         )}
       </div>
