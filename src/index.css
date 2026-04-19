@@ -292,3 +292,24 @@
   100% { transform: translate(-30%, -30%) scale(0.8); opacity: 0.2; }
 }
 .animate-skip-orb { animation: skip-orb 2.8s ease-in-out infinite; }
+
+/* Lava-coil heat pulse for tile glow leaks */
+@keyframes lava-pulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+.animate-lava-pulse { animation: lava-pulse 2.6s ease-in-out infinite; }
+
+/* Subtle gem facet shimmer (slow hue tilt) */
+@keyframes gem-shimmer {
+  0%, 100% { filter: brightness(1) saturate(1.05); }
+  50%      { filter: brightness(1.15) saturate(1.25); }
+}
+.animate-gem-shimmer { animation: gem-shimmer 5.5s ease-in-out infinite; }
+
+/* Whole-board heat shimmer (very subtle) */
+@keyframes board-heat {
+  0%, 100% { filter: brightness(1) contrast(1); }
+  50%      { filter: brightness(1.04) contrast(1.02); }
+}
+.animate-board-heat { animation: board-heat 3.8s ease-in-out infinite; }
