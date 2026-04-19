@@ -146,16 +146,16 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
           });
           if (inQuadrant) return null;
 
-          let bg = "hsl(var(--tile))"; // light tile (matches picture)
+          let bg = "hsl(var(--tile))"; // dark base tile
           let extraStyle: React.CSSProperties = {};
           if (homeColor) {
-            bg = `${PLAYER_HEX[homeColor]}`;
-            extraStyle.boxShadow = `inset 0 0 0 1px hsl(0 0% 100% / 0.25), inset 0 -2px 0 hsl(0 0% 0% / 0.2)`;
+            bg = `linear-gradient(160deg, ${PLAYER_HEX[homeColor]}, ${PLAYER_HEX[homeColor]}cc)`;
+            extraStyle.boxShadow = `inset 0 0 0 1px hsl(0 0% 100% / 0.18), inset 0 -2px 0 hsl(0 0% 0% / 0.35), inset 0 0 8px ${PLAYER_HEX[homeColor]}66`;
           } else if (onMain) {
-            bg = "hsl(0 0% 100%)";
-            extraStyle.boxShadow = `inset 0 0 0 1px hsl(245 30% 75%)`;
+            bg = "hsl(var(--tile-path))";
+            extraStyle.boxShadow = `inset 0 0 0 1px hsl(280 60% 35% / 0.55), inset 0 0 6px hsl(280 90% 65% / 0.12)`;
           } else {
-            extraStyle.boxShadow = `inset 0 0 0 1px hsl(245 30% 80%)`;
+            extraStyle.boxShadow = `inset 0 0 0 1px hsl(245 40% 18%)`;
           }
 
           return (
