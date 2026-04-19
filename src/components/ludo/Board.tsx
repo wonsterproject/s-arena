@@ -238,8 +238,8 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
                   <div
                     className="h-[80%] w-[80%] rounded-full"
                     style={{
-                      background: `radial-gradient(circle at 50% 50%, hsl(0 0% 100% / 0.92), hsl(0 0% 88%) 70%)`,
-                      boxShadow: `inset 0 0 0 3px ${PLAYER_HEX[p]}, inset 0 -3px 6px hsl(0 0% 0% / 0.18), 0 0 8px ${PLAYER_HEX[p]}66`,
+                      background: `radial-gradient(circle at 50% 50%, hsl(245 50% 14%), hsl(250 60% 8%) 70%)`,
+                      boxShadow: `inset 0 0 0 2px ${PLAYER_HEX[p]}, inset 0 -3px 6px hsl(0 0% 0% / 0.6), inset 0 0 10px ${PLAYER_HEX[p]}55, 0 0 8px ${PLAYER_HEX[p]}55`,
                     }}
                   />
                 </div>
