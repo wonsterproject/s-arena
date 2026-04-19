@@ -2,7 +2,7 @@ import { User } from "lucide-react";
 
 interface Stat {
   icon: React.ReactNode;
-  value: number | string;
+  value: React.ReactNode;
 }
 
 interface Props {
