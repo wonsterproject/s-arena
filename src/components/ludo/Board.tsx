@@ -8,6 +8,7 @@ import {
   getTokenCell,
   tileKey,
 } from "@/game/ludoConstants";
+import boardBg from "@/assets/ludo-board-realistic.png";
 
 interface BoardProps {
   tokens: Token[];
@@ -54,8 +55,26 @@ export function Board({
 
   return (
     <div className="aspect-square w-full max-w-[760px] relative" role="grid" aria-label="Ludo board">
+      {/* Realistic 3D coal+glass+stone board image — exact reference */}
+      <img
+        src={boardBg}
+        alt=""
+        aria-hidden
+        className="absolute inset-0 h-full w-full object-cover rounded-[1.4rem] select-none pointer-events-none"
+        draggable={false}
+        style={{ filter: "saturate(1.08) contrast(1.04)" }}
+      />
+      {/* Live ember/heat overlay sits inside the board too */}
       <div
-        className="relative grid h-full w-full overflow-hidden"
+        className="absolute inset-0 rounded-[1.4rem] pointer-events-none animate-board-heat"
+        style={{
+          background:
+            "radial-gradient(ellipse at 50% 50%, hsl(20 90% 40% / 0.15), transparent 70%)",
+          mixBlendMode: "screen",
+        }}
+      />
+      <div
+        className="relative grid h-full w-full overflow-hidden rounded-[1.4rem]"
         style={{
           gridTemplateColumns: `repeat(${SIZE}, 1fr)`,
           gridTemplateRows: `repeat(${SIZE}, 1fr)`,
