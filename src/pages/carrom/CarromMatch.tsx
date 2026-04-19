@@ -190,7 +190,18 @@ export default function CarromMatch() {
             }}
           >
             <CarromScene
-              onReady={(api) => { apiRef.current = api; api.setStrikerPosition(0, BOARD.baselineY); }}
+              onReady={(api) => {
+                apiRef.current = api;
+                api.setStrikerPosition(0, BOARD.baselineY);
+                collisionUnsubRef.current?.();
+                collisionUnsubRef.current = api.onCollision(({ speed }) => {
+                  // Throttle collision SFX so we don't spam during multi-bounces
+                  const now = performance.now();
+                  if (now - lastCollideAt.current < 55) return;
+                  lastCollideAt.current = now;
+                  if (speed > 0.5) playSound("collide");
+                });
+              }}
               onShotResolved={handleShotResolved}
               currentSide={match.turn}
               shooting={shooting}
