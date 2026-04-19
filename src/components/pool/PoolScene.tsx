@@ -193,9 +193,7 @@ export default function PoolScene({ balls, interactive, ballInHand, onShoot, onP
     const cue = balls.find(b => b.id === 0);
     if (!cue) return;
     if (ballInHand) {
-      // Drag cue ball into legal position
-      const isOnBall = Math.hypot(w.x - cue.x, w.z - cue.z) < BALL.radius * 3;
-      if (isOnBall || true) setDraggingCue(true);
+      setDraggingCue(true);
       onPlaceCue(w.x, w.z);
       return;
     }
