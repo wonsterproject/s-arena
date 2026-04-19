@@ -288,35 +288,7 @@ export default function PoolMatch() {
           </div>
         )}
 
-        {/* Bottom HUD: just two compact player cards side by side */}
-        <div className="mt-2 grid grid-cols-2 gap-2 sm:gap-3">
-          <PlayerInfoCard
-            name={match.players[0].name}
-            isActive={match.turn === 0}
-            isYou={!match.players[0].isBot}
-            avatarLetter={match.players[0].name[0]?.toUpperCase()}
-            badge={groupCounts[0].label}
-            badgeColor={groupCounts[0].color}
-            stats={[
-              { icon: <Coins className="h-3 w-3 text-amber-400" />, value: 0 },
-              { icon: <Circle className="h-3 w-3 text-orange-400" fill="currentColor" />, value: groupCounts[0].remaining },
-            ]}
-            align="left"
-          />
-          <PlayerInfoCard
-            name={match.players[1].name}
-            isActive={match.turn === 1}
-            isYou={!match.players[1].isBot}
-            avatarLetter={match.players[1].name[0]?.toUpperCase()}
-            badge={groupCounts[1].label}
-            badgeColor={groupCounts[1].color}
-            stats={[
-              { icon: <Coins className="h-3 w-3 text-amber-400" />, value: 0 },
-              { icon: <CircleDot className="h-3 w-3 text-orange-400" />, value: groupCounts[1].remaining },
-            ]}
-            align="right"
-          />
-        </div>
+
 
         {match.winner !== null && (
           <div
