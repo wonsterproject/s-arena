@@ -153,8 +153,23 @@ export default function Lobby() {
     if (!user) return;
     setCreating(true);
     try {
-      const { data: matchId, error } = await supabase.rpc("create_bot_match");
-      if (error || !matchId) throw error ?? new Error("No match id returned");
+      let matchId: string | null = null;
+      let lastError: Error | null = null;
+
+      const modernBotMatch = await supabase.rpc("create_game_bot_match", { _game: "ludo" });
+      if (!modernBotMatch.error && modernBotMatch.data) {
+        matchId = modernBotMatch.data;
+      } else {
+        lastError = modernBotMatch.error ?? new Error("Could not create ludo bot match");
+        const legacyBotMatch = await supabase.rpc("create_bot_match");
+        if (!legacyBotMatch.error && legacyBotMatch.data) {
+          matchId = legacyBotMatch.data;
+        } else {
+          lastError = legacyBotMatch.error ?? lastError ?? new Error("No match id returned");
+        }
+      }
+
+      if (!matchId) throw lastError ?? new Error("No match id returned");
       navigate(`/match/${matchId}`);
     } catch (err: any) {
       toast({ title: "Failed to start", description: err?.message ?? "Try again", variant: "destructive" });
