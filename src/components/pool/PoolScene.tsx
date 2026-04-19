@@ -11,10 +11,12 @@ interface Props {
   onPlaceCue: (x: number, z: number) => void;
   onAimChange?: (hasAim: boolean) => void;
   ghostHint?: { dx: number; dz: number } | null;
+  /** Pixel width to render at — if omitted, fills container responsively. */
+  fixedWidth?: number;
+  fixedHeight?: number;
 }
 
 export interface PoolSceneApi {
-  /** Call externally (e.g. from Shoot button) — fires the current aim with given power. */
   shoot: () => void;
   hasAim: () => boolean;
 }
@@ -55,15 +57,20 @@ function predictFirstHit(
 }
 
 const PoolScene = forwardRef<PoolSceneApi, Props>(function PoolScene(
-  { balls, interactive, ballInHand, power, onShoot, onPlaceCue, onAimChange, ghostHint },
+  { balls, interactive, ballInHand, power, onShoot, onPlaceCue, onAimChange, ghostHint, fixedWidth, fixedHeight },
   ref,
 ) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [size, setSize] = useState({ w: 800, h: 400 });
+  const [size, setSize] = useState({ w: fixedWidth ?? 800, h: fixedHeight ?? 400 });
   const [aim, setAim] = useState<{ dx: number; dz: number } | null>(null);
   const [draggingCue, setDraggingCue] = useState(false);
   const aimRef = useRef(aim);
+  // Per-ball accumulated rotation angle (radians) for visual spin marker.
+  const spinRef = useRef<Record<number, number>>({});
+  // Last known position of each ball, to compute distance traveled per frame.
+  const lastPosRef = useRef<Record<number, { x: number; z: number }>>({});
+
   useEffect(() => { aimRef.current = aim; onAimChange?.(!!aim); }, [aim, onAimChange]);
 
   useImperativeHandle(ref, () => ({
@@ -75,6 +82,10 @@ const PoolScene = forwardRef<PoolSceneApi, Props>(function PoolScene(
   }), [interactive, onShoot, power]);
 
   useEffect(() => {
+    if (fixedWidth && fixedHeight) {
+      setSize({ w: fixedWidth, h: fixedHeight });
+      return;
+    }
     const el = containerRef.current;
     if (!el) return;
     const ro = new ResizeObserver(() => {
@@ -85,7 +96,27 @@ const PoolScene = forwardRef<PoolSceneApi, Props>(function PoolScene(
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [fixedWidth, fixedHeight]);
+
+  // Update per-ball spin from movement distance.
+  useEffect(() => {
+    for (const b of balls) {
+      const last = lastPosRef.current[b.id];
+      if (last && !b.pocketed) {
+        const dx = b.x - last.x, dz = b.z - last.z;
+        const dist = Math.hypot(dx, dz);
+        if (dist > 0.001) {
+          const dir = Math.atan2(dz, dx);
+          // rolling: angle += distance / radius
+          const prev = spinRef.current[b.id] ?? 0;
+          spinRef.current[b.id] = prev + dist / BALL.radius;
+          // Store direction to orient the spin marker
+          (spinRef.current as any)[b.id + "_dir"] = dir;
+        }
+      }
+      lastPosRef.current[b.id] = { x: b.x, z: b.z };
+    }
+  }, [balls]);
 
   // Render
   useEffect(() => {
@@ -103,7 +134,7 @@ const PoolScene = forwardRef<PoolSceneApi, Props>(function PoolScene(
     const railPx = (TABLE.cushionInset / TABLE.width) * size.w;
     const cornerCap = railPx * 2.6;
 
-    // ---------- Outer wood frame ----------
+    // Outer wood frame
     const woodGrad = ctx.createLinearGradient(0, 0, 0, size.h);
     woodGrad.addColorStop(0, "#8a4a1c");
     woodGrad.addColorStop(0.5, "#6b3410");
@@ -112,7 +143,6 @@ const PoolScene = forwardRef<PoolSceneApi, Props>(function PoolScene(
     roundRect(ctx, 0, 0, size.w, size.h, railPx * 0.9);
     ctx.fill();
 
-    // Subtle wood grain
     ctx.save();
     ctx.globalAlpha = 0.12;
     for (let i = 0; i < 30; i++) {
@@ -125,7 +155,7 @@ const PoolScene = forwardRef<PoolSceneApi, Props>(function PoolScene(
     }
     ctx.restore();
 
-    // ---------- Blue cushion (inner wood-bordered rail area) ----------
+    // Blue cushion
     const cushionInset = railPx * 0.55;
     const cushionGrad = ctx.createLinearGradient(0, cushionInset, 0, size.h - cushionInset);
     cushionGrad.addColorStop(0, "#2563eb");
@@ -134,7 +164,7 @@ const PoolScene = forwardRef<PoolSceneApi, Props>(function PoolScene(
     roundRect(ctx, cushionInset, cushionInset, size.w - cushionInset * 2, size.h - cushionInset * 2, railPx * 0.7);
     ctx.fill();
 
-    // ---------- Felt playing area ----------
+    // Felt
     const feltX = railPx;
     const feltY = railPx;
     const feltW = size.w - railPx * 2;
@@ -146,92 +176,60 @@ const PoolScene = forwardRef<PoolSceneApi, Props>(function PoolScene(
     ctx.fillStyle = feltGrad;
     ctx.fillRect(feltX, feltY, feltW, feltH);
 
-    // Felt fabric noise (very subtle)
     ctx.save();
     ctx.globalAlpha = 0.05;
     for (let i = 0; i < 80; i++) {
       ctx.fillStyle = i % 2 ? "#fff" : "#000";
-      ctx.fillRect(
-        feltX + Math.random() * feltW,
-        feltY + Math.random() * feltH,
-        1, 1,
-      );
+      ctx.fillRect(feltX + Math.random() * feltW, feltY + Math.random() * feltH, 1, 1);
     }
     ctx.restore();
 
-    // ---------- Rail dots (diamond markers) ----------
+    // Rail dots
     ctx.fillStyle = "#f5d000";
     const dotR = railPx * 0.07;
     const longSegs = 8;
     for (let i = 1; i < longSegs; i++) {
-      if (i === longSegs / 2) continue; // skip middle (side pocket)
+      if (i === longSegs / 2) continue;
       const x = feltX + (i / longSegs) * feltW;
-      ctx.beginPath();
-      ctx.arc(x, railPx * 0.5, dotR, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(x, size.h - railPx * 0.5, dotR, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(x, railPx * 0.5, dotR, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, size.h - railPx * 0.5, dotR, 0, Math.PI * 2); ctx.fill();
     }
     const shortSegs = 4;
     for (let i = 1; i < shortSegs; i++) {
       const y = feltY + (i / shortSegs) * feltH;
-      ctx.beginPath();
-      ctx.arc(railPx * 0.5, y, dotR, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(size.w - railPx * 0.5, y, dotR, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(railPx * 0.5, y, dotR, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(size.w - railPx * 0.5, y, dotR, 0, Math.PI * 2); ctx.fill();
     }
 
-    // ---------- Corner brass caps ----------
+    // Brass corners
     const brassGrad = (cx: number, cy: number) => {
       const g = ctx.createRadialGradient(cx, cy, 2, cx, cy, cornerCap);
-      g.addColorStop(0, "#ffe49a");
-      g.addColorStop(0.5, "#c89a3f");
-      g.addColorStop(1, "#5e3a0c");
+      g.addColorStop(0, "#ffe49a"); g.addColorStop(0.5, "#c89a3f"); g.addColorStop(1, "#5e3a0c");
       return g;
     };
-    const corners: Array<[number, number]> = [
-      [0, 0], [size.w, 0], [0, size.h], [size.w, size.h],
-    ];
-    for (const [cx, cy] of corners) {
+    for (const [cx, cy] of [[0,0],[size.w,0],[0,size.h],[size.w,size.h]] as [number,number][]) {
       ctx.fillStyle = brassGrad(cx, cy);
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.arc(cx, cy, cornerCap, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, cornerCap, 0, Math.PI * 2); ctx.fill();
     }
 
     // Pockets
     for (const p of POCKETS) {
       const { px, py } = worldToCanvas(p.x, p.z, size.w, size.h);
       const pr = (p.r / TABLE.width) * size.w;
-      // Pocket shadow ring
       ctx.fillStyle = "#0a0a0a";
-      ctx.beginPath();
-      ctx.arc(px, py, pr * 1.05, 0, Math.PI * 2);
-      ctx.fill();
-      // Pocket inner gradient
+      ctx.beginPath(); ctx.arc(px, py, pr * 1.05, 0, Math.PI * 2); ctx.fill();
       const pg = ctx.createRadialGradient(px, py, 1, px, py, pr);
-      pg.addColorStop(0, "#000");
-      pg.addColorStop(0.7, "#1a1a1a");
-      pg.addColorStop(1, "#000");
+      pg.addColorStop(0, "#000"); pg.addColorStop(0.7, "#1a1a1a"); pg.addColorStop(1, "#000");
       ctx.fillStyle = pg;
-      ctx.beginPath();
-      ctx.arc(px, py, pr, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI * 2); ctx.fill();
     }
 
-    // Head string (subtle)
+    // Head string
     ctx.strokeStyle = "rgba(255,255,255,0.18)";
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 4]);
     const headX = ((-TABLE.halfW * 0.5 + TABLE.halfW) / TABLE.width) * size.w;
-    ctx.beginPath();
-    ctx.moveTo(headX, feltY);
-    ctx.lineTo(headX, feltY + feltH);
-    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(headX, feltY); ctx.lineTo(headX, feltY + feltH); ctx.stroke();
     ctx.setLineDash([]);
 
     const cue = balls.find(b => b.id === 0);
@@ -264,9 +262,7 @@ const PoolScene = forwardRef<PoolSceneApi, Props>(function PoolScene(
         ctx.strokeStyle = "rgba(255,255,255,0.85)";
         ctx.lineWidth = 1.5;
         ctx.setLineDash([3, 3]);
-        ctx.beginPath();
-        ctx.arc(gx, gy, ballRpx, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.beginPath(); ctx.arc(gx, gy, ballRpx, 0, Math.PI * 2); ctx.stroke();
         ctx.setLineDash([]);
 
         const tx = hit.ball.x - hit.ghostX;
@@ -274,7 +270,7 @@ const PoolScene = forwardRef<PoolSceneApi, Props>(function PoolScene(
         const tlen = Math.hypot(tx, tz) || 1;
         const tux = tx / tlen, tuz = tz / tlen;
         const { px: bpx, py: bpy } = worldToCanvas(hit.ball.x, hit.ball.z, size.w, size.h);
-        const projLen = size.w * 0.3;
+        const projLen = size.w * 0.25;
         const epx = bpx + tux * projLen;
         const epy = bpy + tuz * projLen;
         const col = BALL_COLORS[hit.ball.id] ?? "#fff";
@@ -298,92 +294,193 @@ const PoolScene = forwardRef<PoolSceneApi, Props>(function PoolScene(
       }
     }
 
-    // Balls
+    // Balls (with rolling spin marker)
     for (const b of balls) {
       if (b.pocketed) continue;
       const { px, py } = worldToCanvas(b.x, b.z, size.w, size.h);
       const r = (BALL.radius / TABLE.width) * size.w;
+
+      // Shadow
       ctx.fillStyle = "rgba(0,0,0,0.4)";
-      ctx.beginPath();
-      ctx.arc(px + 1.5, py + 2.5, r, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(px + 1.5, py + 2.5, r, 0, Math.PI * 2); ctx.fill();
+
       const color = BALL_COLORS[b.id] ?? "#fff";
+      const angle = spinRef.current[b.id] ?? 0;
+      const dir = (spinRef.current as any)[b.id + "_dir"] ?? 0;
+
+      // Save & rotate around ball center for marker / stripe orientation
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.rotate(dir);
+      // Apply rolling rotation along travel direction by offsetting marker.
+      // The "rolling" is conveyed by the moving stripe band / number circle
+      // shifted by `angle` modulated to a small visual oscillation.
+      const roll = (angle % (Math.PI * 2));
+
       if (b.kind === "stripe") {
+        // White ball base
         ctx.fillStyle = "#fff";
-        ctx.beginPath();
-        ctx.arc(px, py, r, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+        // Colored stripe band (perpendicular to travel direction so it appears to roll)
+        ctx.save();
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.clip();
         ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.ellipse(px, py, r, r * 0.55, 0, 0, Math.PI * 2);
-        ctx.fill();
+        // Band positioned by roll → moves across face as ball rolls
+        const bandShift = Math.sin(roll) * r * 0.5;
+        ctx.fillRect(-r, -r * 0.45 + bandShift, r * 2, r * 0.9);
+        ctx.restore();
       } else {
         ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(px, py, r, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
       }
-      const hl = ctx.createRadialGradient(px - r * 0.4, py - r * 0.4, 0, px, py, r);
+
+      // Highlight
+      const hl = ctx.createRadialGradient(-r * 0.4, -r * 0.4, 0, 0, 0, r);
       hl.addColorStop(0, "rgba(255,255,255,0.65)");
       hl.addColorStop(0.6, "rgba(255,255,255,0)");
       ctx.fillStyle = hl;
-      ctx.beginPath();
-      ctx.arc(px, py, r, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+
       if (b.id !== 0) {
+        // Number circle that rolls across the ball face
+        const offX = Math.cos(roll) * r * 0.45;
+        const offY = Math.sin(roll) * r * 0.15;
         ctx.fillStyle = "#fff";
-        ctx.beginPath();
-        ctx.arc(px, py, r * 0.42, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(offX, offY, r * 0.42, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = "#000";
         ctx.font = `bold ${Math.max(8, r * 0.7)}px sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(String(b.id), px, py + 0.5);
+        // Counter-rotate text so it stays readable
+        ctx.save();
+        ctx.translate(offX, offY);
+        ctx.rotate(-dir);
+        ctx.fillText(String(b.id), 0, 0.5);
+        ctx.restore();
+      } else {
+        // Cue ball — small red dot that rolls (classic spin indicator)
+        const offX = Math.cos(roll) * r * 0.5;
+        const offY = Math.sin(roll) * r * 0.15;
+        ctx.fillStyle = "#dc2626";
+        ctx.beginPath(); ctx.arc(offX, offY, r * 0.13, 0, Math.PI * 2); ctx.fill();
       }
+
       ctx.strokeStyle = "rgba(0,0,0,0.4)";
       ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(px, py, r, 0, Math.PI * 2);
-      ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
     }
 
-    // CUE STICK
+    // ===== ADVANCED CUE STICK =====
     if (cue && !cue.pocketed && interactive && activeAim) {
       const len = Math.hypot(activeAim.dx, activeAim.dz) || 1;
       const ux = activeAim.dx / len, uz = activeAim.dz / len;
       const { px: cpx, py: cpy } = worldToCanvas(cue.x, cue.z, size.w, size.h);
       const ballRpx = (BALL.radius / TABLE.width) * size.w;
-      const stickLen = size.w * 0.42;
+      const stickLen = size.w * 0.45;
       const pullback = ballRpx * 0.6 + power * ballRpx * 5;
       const tipX = cpx - ux * (ballRpx + pullback);
       const tipY = cpy - uz * (ballRpx + pullback);
       const buttX = tipX - ux * stickLen;
       const buttY = tipY - uz * stickLen;
       const perpX = -uz, perpY = ux;
-      const tipW = ballRpx * 0.22;
+      const tipW = ballRpx * 0.18;
       const buttW = ballRpx * 0.55;
-      const grad = ctx.createLinearGradient(tipX, tipY, buttX, buttY);
-      grad.addColorStop(0, "#f0f0f0");
-      grad.addColorStop(0.04, "#1a1a1a");
-      grad.addColorStop(0.08, "#e8d5a8");
-      grad.addColorStop(0.6, "#b8895a");
-      grad.addColorStop(1, "#3a1f0a");
-      ctx.fillStyle = grad;
+
+      const drawTrap = (
+        x1: number, y1: number, w1: number,
+        x2: number, y2: number, w2: number,
+        fill: string | CanvasGradient,
+      ) => {
+        ctx.fillStyle = fill;
+        ctx.beginPath();
+        ctx.moveTo(x1 + perpX * w1, y1 + perpY * w1);
+        ctx.lineTo(x2 + perpX * w2, y2 + perpY * w2);
+        ctx.lineTo(x2 - perpX * w2, y2 - perpY * w2);
+        ctx.lineTo(x1 - perpX * w1, y1 - perpY * w1);
+        ctx.closePath();
+        ctx.fill();
+      };
+
+      // Segment positions along cue from tip to butt
+      // Section 1: ferrule (white) — very short
+      const ferruleEndT = 0.04;
+      const fxX = tipX - ux * stickLen * ferruleEndT;
+      const fxY = tipY - uz * stickLen * ferruleEndT;
+      const fW = tipW + (buttW - tipW) * ferruleEndT;
+      drawTrap(tipX, tipY, tipW, fxX, fxY, fW, "#f5f0e0");
+
+      // Section 2: black collar
+      const collarEndT = 0.08;
+      const cxX = tipX - ux * stickLen * collarEndT;
+      const cyY = tipY - uz * stickLen * collarEndT;
+      const cW = tipW + (buttW - tipW) * collarEndT;
+      drawTrap(fxX, fxY, fW, cxX, cyY, cW, "#1a1a1a");
+
+      // Section 3: shaft (pale maple)
+      const shaftEndT = 0.55;
+      const sxX = tipX - ux * stickLen * shaftEndT;
+      const syY = tipY - uz * stickLen * shaftEndT;
+      const sW = tipW + (buttW - tipW) * shaftEndT;
+      const shaftGrad = ctx.createLinearGradient(
+        cxX + perpX * cW, cyY + perpY * cW,
+        cxX - perpX * cW, cyY - perpY * cW,
+      );
+      shaftGrad.addColorStop(0, "#f4e4bf");
+      shaftGrad.addColorStop(0.5, "#e8d29a");
+      shaftGrad.addColorStop(1, "#a07a4a");
+      drawTrap(cxX, cyY, cW, sxX, syY, sW, shaftGrad);
+
+      // Section 4: joint (silver ring) — short
+      const jointEndT = 0.6;
+      const jxX = tipX - ux * stickLen * jointEndT;
+      const jyY = tipY - uz * stickLen * jointEndT;
+      const jW = tipW + (buttW - tipW) * jointEndT;
+      drawTrap(sxX, syY, sW, jxX, jyY, jW, "#c0c0c0");
+
+      // Section 5: butt (dark wood with subtle gradient)
+      const buttGrad = ctx.createLinearGradient(
+        jxX + perpX * jW, jyY + perpY * jW,
+        jxX - perpX * jW, jyY - perpY * jW,
+      );
+      buttGrad.addColorStop(0, "#5a2a0a");
+      buttGrad.addColorStop(0.5, "#3a1808");
+      buttGrad.addColorStop(1, "#1a0a04");
+      drawTrap(jxX, jyY, jW, buttX, buttY, buttW, buttGrad);
+
+      // Decorative wraps on butt (3 thin gold rings)
+      for (let i = 1; i <= 3; i++) {
+        const t = jointEndT + (1 - jointEndT) * (i / 4);
+        const rxX = tipX - ux * stickLen * t;
+        const ryY = tipY - uz * stickLen * t;
+        const rxX2 = tipX - ux * stickLen * (t + 0.012);
+        const ryY2 = tipY - uz * stickLen * (t + 0.012);
+        const rW = tipW + (buttW - tipW) * t;
+        drawTrap(rxX, ryY, rW * 1.02, rxX2, ryY2, rW * 1.02, "#d4af37");
+      }
+
+      // Bumper at butt end
+      ctx.fillStyle = "#0a0a0a";
+      ctx.beginPath();
+      ctx.arc(buttX, buttY, buttW * 1.05, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Cue tip (blue chalk)
+      ctx.fillStyle = "#1e40af";
+      ctx.beginPath();
+      ctx.arc(tipX, tipY, tipW * 1.1, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Cue stick subtle outline
+      ctx.strokeStyle = "rgba(0,0,0,0.45)";
+      ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(tipX + perpX * tipW, tipY + perpY * tipW);
       ctx.lineTo(buttX + perpX * buttW, buttY + perpY * buttW);
       ctx.lineTo(buttX - perpX * buttW, buttY - perpY * buttW);
       ctx.lineTo(tipX - perpX * tipW, tipY - perpY * tipW);
       ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = "rgba(0,0,0,0.5)";
-      ctx.lineWidth = 1;
       ctx.stroke();
-      ctx.fillStyle = "#2563eb";
-      ctx.beginPath();
-      ctx.arc(tipX, tipY, tipW * 1.05, 0, Math.PI * 2);
-      ctx.fill();
     }
   }, [balls, size, aim, ghostHint, interactive, power]);
 
@@ -429,13 +526,14 @@ const PoolScene = forwardRef<PoolSceneApi, Props>(function PoolScene(
   };
 
   return (
-    <div ref={containerRef} className="w-full relative">
+    <div ref={containerRef} className="relative" style={fixedWidth ? { width: fixedWidth, height: fixedHeight } : { width: "100%" }}>
       <canvas
         ref={canvasRef}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        className="block w-full rounded-2xl touch-none cursor-crosshair"
+        className="block rounded-2xl touch-none cursor-crosshair"
+        style={fixedWidth ? { width: fixedWidth, height: fixedHeight } : { width: "100%" }}
       />
     </div>
   );
@@ -443,7 +541,6 @@ const PoolScene = forwardRef<PoolSceneApi, Props>(function PoolScene(
 
 export default PoolScene;
 
-// ---------- helpers ----------
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);

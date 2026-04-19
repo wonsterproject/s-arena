@@ -9,9 +9,9 @@ import type { Ball, MatchState, ShotResult } from "@/game/pool/types";
 import { TABLE, BALL, POCKETS, PHYS } from "@/game/pool/constants";
 import GameTopBar from "@/components/game/GameTopBar";
 import PlayerInfoCard from "@/components/game/PlayerInfoCard";
-import PowerMeter from "@/components/game/PowerMeter";
+import VerticalPowerStrip from "@/components/game/VerticalPowerStrip";
+import LandscapeGate from "@/components/pool/LandscapeGate";
 
-// Same physics step as before — gameplay logic untouched.
 function physicsStep(
   balls: Ball[],
   ctx: { firstContactId: number | null; cushionAfterContact: boolean; hitAny: boolean; pocketed: number[] },
@@ -93,11 +93,38 @@ export default function PoolMatch() {
   const animRef = useRef<number | null>(null);
   const sceneRef = useRef<PoolSceneApi | null>(null);
 
+  // Compute table size that fits inside available viewport (landscape).
+  const [tableSize, setTableSize] = useState({ w: 800, h: 400 });
+  useEffect(() => {
+    const recalc = () => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      // Reserve: ~64px topbar, ~110px bottom HUD, ~24px paddings, ~50px right power strip.
+      const horizReserve = 80;
+      const vertReserve = 200;
+      const availW = vw - horizReserve;
+      const availH = vh - vertReserve;
+      // Table aspect 2:1
+      let w = Math.min(availW, availH * 2);
+      let h = w / 2;
+      if (h > availH) { h = availH; w = h * 2; }
+      w = Math.max(360, Math.min(w, 1200));
+      h = w / 2;
+      setTableSize({ w, h });
+    };
+    recalc();
+    window.addEventListener("resize", recalc);
+    window.addEventListener("orientationchange", recalc);
+    return () => {
+      window.removeEventListener("resize", recalc);
+      window.removeEventListener("orientationchange", recalc);
+    };
+  }, []);
+
   useEffect(() => {
     if (!shooting) setAnimBalls(match.balls.map(b => ({ ...b })));
   }, [match.balls, shooting]);
 
-  // Reset power after each shot
   useEffect(() => { if (shooting) setPower(0); }, [shooting]);
 
   const me = match.players[match.turn];
@@ -200,13 +227,14 @@ export default function PoolMatch() {
     : me.isBot ? "Opponent's Turn" : "Your Turn";
   const subtitle = match.winner !== null
     ? "Game Over"
-    : shooting ? "Shot in progress..." : me.isBot ? "Thinking..." : (match.ballInHand ? "Place Cue Ball" : "Aiming Shot...");
+    : shooting ? "Shot in progress..." : me.isBot ? "Thinking..." : (match.ballInHand ? "Place Cue Ball" : "Drag to aim, slide power to shoot");
 
-  const triggerShot = () => sceneRef.current?.shoot();
+  const fireShot = () => sceneRef.current?.shoot();
 
   return (
-    <main className="min-h-screen px-2 py-3 sm:py-4">
-      <div className="max-w-6xl mx-auto">
+    <main className="min-h-screen px-2 py-2 sm:py-3 overflow-hidden">
+      <LandscapeGate />
+      <div className="max-w-[1400px] mx-auto">
         <GameTopBar
           title={titleText}
           subtitle={subtitle}
@@ -214,8 +242,8 @@ export default function PoolMatch() {
           onRestart={restart}
         />
 
-        {/* Pool table */}
-        <div className="mt-2">
+        {/* Table + vertical power strip side-by-side */}
+        <div className="mt-1 flex items-center justify-center gap-2 sm:gap-3">
           <PoolScene
             ref={sceneRef}
             balls={animBalls}
@@ -226,18 +254,29 @@ export default function PoolMatch() {
             onPlaceCue={handlePlaceCue}
             onAimChange={setHasAim}
             ghostHint={botHint}
+            fixedWidth={tableSize.w}
+            fixedHeight={tableSize.h}
           />
+          {/* Vertical power strip, height matches table */}
+          <div style={{ height: tableSize.h }} className="flex items-stretch">
+            <VerticalPowerStrip
+              power={power}
+              setPower={setPower}
+              onRelease={fireShot}
+              disabled={!isHumanTurn || !hasAim}
+            />
+          </div>
         </div>
 
         {match.ballInHand && isHumanTurn && (
-          <div className="mt-2 rounded-xl px-4 py-2 text-center text-sm font-bold text-amber-300"
+          <div className="mt-2 rounded-xl px-3 py-1.5 text-center text-xs font-bold text-amber-300 mx-auto max-w-md"
                style={{ background: "hsl(232 50% 12% / 0.85)", boxShadow: "0 0 0 1.5px hsl(45 100% 60% / 0.4) inset" }}>
-            🖐️ Tap anywhere on the table to place the cue ball, then aim.
+            🖐️ Tap on the table to place the cue ball, then aim.
           </div>
         )}
 
-        {/* Bottom HUD: player cards + power meter */}
-        <div className="mt-3 grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-2 sm:gap-3 items-stretch">
+        {/* Bottom HUD: just two compact player cards side by side */}
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:gap-3">
           <PlayerInfoCard
             name={match.players[0].name}
             isActive={match.turn === 0}
@@ -251,19 +290,6 @@ export default function PoolMatch() {
             ]}
             align="left"
           />
-
-          {/* Power meter spans middle on desktop, full width on mobile */}
-          <div className="sm:px-2 flex items-center min-w-0">
-            <PowerMeter
-              power={power}
-              setPower={setPower}
-              onShoot={triggerShot}
-              shootLabel="Shoot"
-              disabled={!isHumanTurn}
-              canShoot={isHumanTurn && hasAim}
-            />
-          </div>
-
           <PlayerInfoCard
             name={match.players[1].name}
             isActive={match.turn === 1}
