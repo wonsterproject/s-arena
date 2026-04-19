@@ -67,12 +67,12 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
 
   return (
     <div
-      className="relative aspect-square w-full max-w-[840px] rounded-3xl bg-board p-3 neon-border"
+      className="rainbow-frame aspect-square w-full max-w-[760px]"
       role="grid"
       aria-label="Ludo board"
     >
       <div
-        className="relative grid h-full w-full overflow-hidden rounded-2xl"
+        className="relative grid h-full w-full overflow-hidden rounded-[1.4rem]"
         style={{
           gridTemplateColumns: `repeat(${SIZE}, 1fr)`,
           gridTemplateRows: `repeat(${SIZE}, 1fr)`,
@@ -91,26 +91,37 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
               style={{
                 gridColumn: `${q.cols[0] + 1} / span 6`,
                 gridRow: `${q.rows[0] + 1} / span 6`,
-                background: `linear-gradient(135deg, ${PLAYER_HEX[p]}, ${PLAYER_HEX[p]}cc)`,
+                background: `
+                  radial-gradient(ellipse at 30% 25%, hsl(0 0% 100% / 0.25), transparent 55%),
+                  linear-gradient(135deg, ${PLAYER_HEX[p]}, ${PLAYER_HEX[p]}cc)
+                `,
                 position: "relative",
-                boxShadow: isActive ? `inset 0 0 0 4px hsl(0 0% 100% / 0.55), inset 0 0 40px ${PLAYER_HEX[p]}` : undefined,
+                boxShadow: isActive
+                  ? `inset 0 0 0 4px hsl(45 100% 65% / 0.85), inset 0 0 50px ${PLAYER_HEX[p]}, 0 0 30px ${PLAYER_HEX[p]}aa`
+                  : `inset 0 0 0 2px hsl(45 100% 60% / 0.45), inset 0 0 30px hsl(0 0% 0% / 0.25)`,
               }}
             >
+              {/* Inner embossed white well with gold rim */}
               <div
-                className="absolute inset-[14%] rounded-xl"
+                className="absolute inset-[12%] rounded-2xl"
                 style={{
-                  background: "hsl(var(--board))",
-                  boxShadow: `inset 0 0 0 2px ${PLAYER_HEX[p]}`,
+                  background: "linear-gradient(160deg, hsl(0 0% 100%), hsl(0 0% 92%))",
+                  boxShadow: `
+                    inset 0 0 0 3px hsl(45 100% 60%),
+                    inset 0 0 0 5px ${PLAYER_HEX[p]}cc,
+                    inset 0 -4px 8px hsl(0 0% 0% / 0.15),
+                    0 4px 14px hsl(0 0% 0% / 0.4)
+                  `,
                 }}
               />
               {playerNames?.[p] && (
                 <div
-                  className="absolute left-1/2 top-2 -translate-x-1/2 px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-black tracking-wide whitespace-nowrap max-w-[90%] truncate"
+                  className="absolute left-1/2 bottom-1.5 -translate-x-1/2 px-2 py-0.5 rounded-md text-[9px] sm:text-[10px] font-black tracking-wide whitespace-nowrap max-w-[85%] truncate z-10"
                   style={{
-                    background: "hsl(var(--background) / 0.7)",
-                    color: PLAYER_HEX[p],
+                    background: "hsl(0 0% 0% / 0.55)",
+                    color: "hsl(0 0% 100%)",
                     backdropFilter: "blur(6px)",
-                    boxShadow: `0 0 0 1px ${PLAYER_HEX[p]}55`,
+                    boxShadow: `0 0 0 1px hsl(45 100% 60% / 0.7)`,
                   }}
                 >
                   {playerNames[p]}
@@ -135,11 +146,16 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
           });
           if (inQuadrant) return null;
 
-          let bg = "hsl(var(--tile))";
+          let bg = "hsl(var(--tile))"; // light tile (matches picture)
+          let extraStyle: React.CSSProperties = {};
           if (homeColor) {
             bg = `${PLAYER_HEX[homeColor]}`;
+            extraStyle.boxShadow = `inset 0 0 0 1px hsl(0 0% 100% / 0.25), inset 0 -2px 0 hsl(0 0% 0% / 0.2)`;
           } else if (onMain) {
-            bg = "hsl(230 18% 17%)";
+            bg = "hsl(0 0% 100%)";
+            extraStyle.boxShadow = `inset 0 0 0 1px hsl(245 30% 75%)`;
+          } else {
+            extraStyle.boxShadow = `inset 0 0 0 1px hsl(245 30% 80%)`;
           }
 
           return (
@@ -150,26 +166,49 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
                 gridColumn: c + 1,
                 gridRow: r + 1,
                 background: bg,
+                ...extraStyle,
               }}
             >
               {isSafe && !homeColor && (
                 <Star
-                  className="absolute inset-0 m-auto h-3/5 w-3/5 opacity-60"
-                  style={{ color: "hsl(var(--accent))" }}
+                  className="absolute inset-0 m-auto h-3/5 w-3/5"
+                  style={{ color: "hsl(45 100% 55%)", filter: "drop-shadow(0 0 4px hsl(45 100% 60%))" }}
                   fill="currentColor"
                   strokeWidth={1}
                 />
               )}
               {isCenter && (
-                <div
-                  className="absolute inset-0"
-                  style={{ background: "hsl(0 0% 0%)" }}
-                />
+                <div className="absolute inset-0" style={{ background: "hsl(0 0% 0%)" }} />
               )}
               {SKIP_KEYS.has(tileKey(r, c)) && <SkipCellGlow />}
             </div>
           );
         })}
+
+        {/* Center star-burst rays */}
+        <div
+          className="pointer-events-none absolute"
+          style={{
+            left: `${(6 / SIZE) * 100}%`,
+            top: `${(6 / SIZE) * 100}%`,
+            width: `${(3 / SIZE) * 100}%`,
+            height: `${(3 / SIZE) * 100}%`,
+            zIndex: 5,
+          }}
+        >
+          <div
+            className="absolute inset-0 animate-center-rays"
+            style={{
+              background: `conic-gradient(from 0deg,
+                hsl(0 90% 60% / 0.55) 0deg, transparent 45deg,
+                hsl(45 100% 55% / 0.55) 90deg, transparent 135deg,
+                hsl(140 75% 50% / 0.55) 180deg, transparent 225deg,
+                hsl(215 95% 60% / 0.55) 270deg, transparent 315deg)`,
+              borderRadius: "50%",
+              filter: "blur(8px)",
+            }}
+          />
+        </div>
 
         {/* Center content (dice / decoration) */}
         <div
@@ -196,10 +235,10 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
                   style={{ gridColumn: c + 1, gridRow: r + 1 }}
                 >
                   <div
-                    className="h-[78%] w-[78%] rounded-full"
+                    className="h-[80%] w-[80%] rounded-full"
                     style={{
-                      background: "hsl(var(--board))",
-                      boxShadow: `inset 0 0 0 2px ${PLAYER_HEX[p]}aa`,
+                      background: `radial-gradient(circle at 50% 50%, hsl(0 0% 100% / 0.92), hsl(0 0% 88%) 70%)`,
+                      boxShadow: `inset 0 0 0 3px ${PLAYER_HEX[p]}, inset 0 -3px 6px hsl(0 0% 0% / 0.18), 0 0 8px ${PLAYER_HEX[p]}66`,
                     }}
                   />
                 </div>
@@ -226,34 +265,61 @@ export function Board({ tokens, currentPlayer, movableTokenIds, onTokenClick, ki
                     const killed = killedTokenIds.has(t.id);
                     const offset = group.length > 1 ? (i - (group.length - 1) / 2) * 18 : 0;
                     const offsetY = group.length > 1 ? (i % 2 === 0 ? -4 : 4) : 0;
+                    const c = PLAYER_HEX[t.player];
                     return (
                       <button
                         key={t.id}
                         onClick={() => movable && onTokenClick(t.id)}
                         disabled={!movable}
-                        className={`pointer-events-auto absolute left-1/2 top-1/2 flex items-center justify-center rounded-full transition-all duration-300 animate-token-pop ${
+                        className={`pointer-events-auto absolute left-1/2 top-1/2 flex items-center justify-center transition-all duration-300 animate-token-pop ${
                           movable ? "cursor-pointer animate-tile-highlight" : "cursor-default"
                         } ${killed ? "animate-kill" : ""}`}
                         style={{
-                          width: "70%",
-                          height: "70%",
+                          width: "78%",
+                          height: "78%",
                           transform: `translate(calc(-50% + ${offset}%), calc(-50% + ${offsetY}%)) ${
-                            movable ? "scale(1.05)" : ""
+                            movable ? "scale(1.08)" : ""
                           }`,
-                          background: `radial-gradient(circle at 30% 25%, hsl(0 0% 100% / 0.8), ${PLAYER_HEX[t.player]} 60%)`,
-                          boxShadow: `0 4px 10px hsl(0 0% 0% / 0.5), 0 0 0 2px hsl(0 0% 100% / 0.2) inset, ${
-                            movable ? `0 0 14px ${PLAYER_HEX[t.player]}` : ""
-                          }`,
+                          /* Pawn/dome 3D look matching reference picture */
+                          borderRadius: "55% 55% 50% 50% / 65% 65% 35% 35%",
+                          background: `
+                            radial-gradient(ellipse at 32% 22%, hsl(0 0% 100% / 0.95), hsl(0 0% 100% / 0.25) 30%, transparent 55%),
+                            linear-gradient(160deg, ${c}, hsl(0 0% 0% / 0.45) 110%)
+                          `,
+                          boxShadow: `
+                            0 6px 10px hsl(0 0% 0% / 0.55),
+                            0 1px 0 hsl(0 0% 100% / 0.2) inset,
+                            0 -3px 6px hsl(0 0% 0% / 0.35) inset,
+                            0 0 0 1.5px hsl(45 100% 60% / 0.85),
+                            ${movable ? `0 0 16px ${c}, 0 0 28px ${c}88` : `0 0 6px ${c}55`}
+                          `,
                           zIndex: 10 + i,
                         }}
                         aria-label={`${t.player} token`}
                       >
+                        {/* Gold rim highlight */}
                         <span
-                          className="block rounded-full"
+                          className="absolute left-1/2 -translate-x-1/2"
                           style={{
-                            width: "30%",
-                            height: "30%",
-                            background: "hsl(0 0% 100% / 0.55)",
+                            bottom: "18%",
+                            width: "70%",
+                            height: "8%",
+                            background: "linear-gradient(180deg, hsl(45 100% 75%), hsl(38 100% 50%))",
+                            borderRadius: "999px",
+                            boxShadow: "0 1px 0 hsl(0 0% 0% / 0.3), 0 0 6px hsl(45 100% 60% / 0.7)",
+                          }}
+                        />
+                        {/* Top sheen */}
+                        <span
+                          className="absolute"
+                          style={{
+                            top: "12%",
+                            left: "22%",
+                            width: "32%",
+                            height: "22%",
+                            background: "radial-gradient(ellipse, hsl(0 0% 100% / 0.85), transparent 70%)",
+                            borderRadius: "50%",
+                            filter: "blur(0.5px)",
                           }}
                         />
                       </button>
