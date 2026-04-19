@@ -154,7 +154,7 @@ export default function CarromMatch() {
           onRestart={restart}
         />
 
-        {/* Compact status strip: scores + colors */}
+        {/* Compact status strip: scores + colors + sound/rules buttons */}
         <div className="flex items-center justify-between gap-2 px-3 py-1.5 mb-1 rounded-xl text-xs"
           style={{
             background: "linear-gradient(180deg, hsl(232 50% 14% / 0.9), hsl(232 55% 8% / 0.9))",
@@ -167,9 +167,26 @@ export default function CarromMatch() {
             <span className="text-amber-300">{you.score}</span>
             {you.queenCovered && <span className="text-red-400">♛</span>}
           </div>
-          <div className="text-[10px] uppercase tracking-wider text-indigo-200/70">
-            {colorsAssigned ? `${you.color} vs ${opp.color}` : "colors unclaimed"}
+
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setShowRules(true)}
+              aria-label="Show rules"
+              className="h-7 w-7 grid place-items-center rounded-lg text-white/90 hover:text-white transition"
+              style={{ background: "hsl(232 50% 22% / 0.7)", boxShadow: "0 0 0 1px hsl(45 100% 60% / 0.3) inset" }}
+            >
+              <BookOpen className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => setSoundOn(s => !s)}
+              aria-label={soundOn ? "Mute" : "Unmute"}
+              className="h-7 w-7 grid place-items-center rounded-lg text-white/90 hover:text-white transition"
+              style={{ background: "hsl(232 50% 22% / 0.7)", boxShadow: "0 0 0 1px hsl(45 100% 60% / 0.3) inset" }}
+            >
+              {soundOn ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+            </button>
           </div>
+
           <div className="flex items-center gap-1.5 font-bold text-white">
             {opp.queenCovered && <span className="text-red-400">♛</span>}
             <span className="text-amber-300">{opp.score}</span>
