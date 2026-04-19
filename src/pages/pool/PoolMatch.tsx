@@ -212,7 +212,7 @@ export default function PoolMatch() {
 
   const groupCounts = useMemo(() => {
     return match.players.map(p => {
-      if (!p.group) return { remaining: 7, label: "Open", color: "hsl(232 50% 30%)" };
+      if (!p.group) return { remaining: 7, label: "", color: "hsl(232 50% 30%)" };
       const remaining = 7 - p.pottedCount;
       return {
         remaining,
