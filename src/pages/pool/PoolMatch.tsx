@@ -99,16 +99,19 @@ export default function PoolMatch() {
     const recalc = () => {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      // Reserve: ~64px topbar, ~110px bottom HUD, ~24px paddings, ~50px right power strip.
-      const horizReserve = 80;
-      const vertReserve = 200;
+      const isMobile = Math.min(vw, vh) < 600;
+      // On mobile (landscape) we shrink reserves so the table dominates the screen.
+      const horizReserve = isMobile ? 52 : 80;   // power strip + small gap
+      const vertReserve  = isMobile ? 120 : 200; // topbar + bottom HUD
       const availW = vw - horizReserve;
       const availH = vh - vertReserve;
       // Table aspect 2:1
       let w = Math.min(availW, availH * 2);
       let h = w / 2;
       if (h > availH) { h = availH; w = h * 2; }
-      w = Math.max(360, Math.min(w, 1200));
+      const minW = isMobile ? 520 : 360;
+      const maxW = isMobile ? 1100 : 1200;
+      w = Math.max(minW, Math.min(w, maxW));
       h = w / 2;
       setTableSize({ w, h });
     };
