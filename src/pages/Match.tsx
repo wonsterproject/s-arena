@@ -471,62 +471,141 @@ export default function Match() {
 
   const turnRemaining = Math.max(0, Math.ceil((TURN_TIMEOUT_MS - (now - state.turnStartAt)) / 1000));
 
+  // Tokens finished count per color
+  const finishedByColor: Record<PlayerColor, number> = { red: 0, blue: 0, green: 0, yellow: 0 };
+  state.tokens.forEach((t) => { if (t.state === "finished") finishedByColor[t.player]++; });
+
+  const renderCard = (color: PlayerColor) => {
+    const seat = seatByColor.get(color);
+    if (!seat) return <div className="w-[96px]" aria-hidden />;
+    return (
+      <PlayerCard
+        color={color}
+        name={seat.name}
+        active={state.currentPlayer === color}
+        isBot={seat.isBot}
+        isYou={seat.userId === user?.id}
+        avatarUrl={seat.avatarUrl}
+        coins={seat.coins}
+        finishedCount={finishedByColor[color]}
+      />
+    );
+  };
+
   return (
-    <main className="min-h-screen px-2 py-4 md:py-6">
-      <header className="mx-auto mb-4 flex max-w-6xl items-center justify-between px-2">
+    <main className="relative min-h-screen px-2 py-3 md:py-5 overflow-hidden">
+      <AmbientParticles />
+
+      {/* Top header */}
+      <header className="mx-auto mb-3 flex max-w-6xl items-center justify-between px-2">
         <button onClick={() => navigate("/lobby")} className="glass-btn h-10 flex items-center gap-2 text-sm">
           <ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">Lobby</span>
         </button>
-        <div className="text-center">
-          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Mode</p>
-          <p className="text-sm font-bold uppercase">{matchMode}</p>
+
+        {/* Your Turn banner (center) */}
+        <div className="flex flex-col items-center gap-1.5">
+          <div className="relative overflow-hidden rounded-full">
+            <div className="turn-banner">
+              <Sparkles className="h-3.5 w-3.5" />
+              {state.winner ? "Game Over" : isMyTurn ? "Your Turn" : (isBotTurn ? "Bot Turn" : `${currentSeat?.name ?? state.currentPlayer}'s Turn`)}
+              <Sparkles className="h-3.5 w-3.5" />
+            </div>
+            {/* sheen sweep */}
+            <span
+              className="pointer-events-none absolute inset-y-0 -inset-x-2 animate-sheen"
+              style={{
+                background: "linear-gradient(110deg, transparent 30%, hsl(0 0% 100% / 0.55) 50%, transparent 70%)",
+                width: "40%",
+                mixBlendMode: "overlay",
+              }}
+            />
+          </div>
+          {!state.winner && (
+            <div
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold"
+              style={{
+                background: "hsl(0 0% 0% / 0.5)",
+                boxShadow: `inset 0 0 0 1px ${PLAYER_HEX[state.currentPlayer]}, 0 0 12px ${PLAYER_HEX[state.currentPlayer]}55`,
+                color: PLAYER_HEX[state.currentPlayer],
+              }}
+            >
+              <span
+                className="h-1.5 w-1.5 rounded-full animate-pulse"
+                style={{ background: PLAYER_HEX[state.currentPlayer], boxShadow: `0 0 8px ${PLAYER_HEX[state.currentPlayer]}` }}
+              />
+              {state.hasRolled ? `Move (${state.diceValue})` : "Roll the Dice!"}
+              {!isBotTurn && (
+                <span className={`ml-1 inline-flex items-center gap-0.5 ${turnRemaining <= 5 ? "text-red-300" : "opacity-80"}`}>
+                  <Clock className="h-3 w-3" />{turnRemaining}s
+                </span>
+              )}
+            </div>
+          )}
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setSoundOn((s) => !s)}
-            className="glass-btn h-10 w-10 !p-0 flex items-center justify-center"
-            aria-label="Toggle sound"
-          >
-            {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-          </button>
-        </div>
+
+        <button
+          onClick={() => setSoundOn((s) => !s)}
+          className="glass-btn h-10 w-10 !p-0 flex items-center justify-center"
+          aria-label="Toggle sound"
+        >
+          {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+        </button>
       </header>
 
-      {/* Active player banner */}
-      <div className="mx-auto mb-4 flex max-w-6xl items-center justify-center gap-3 flex-wrap">
-        <span
-          className="h-3 w-3 rounded-full animate-pulse"
-          style={{ background: PLAYER_HEX[state.currentPlayer], boxShadow: `0 0 18px ${PLAYER_HEX[state.currentPlayer]}` }}
-        />
-        <p className="text-sm font-semibold" style={{ color: PLAYER_HEX[state.currentPlayer] }}>
-          {currentSeat?.name ?? state.currentPlayer}
-          {currentSeat?.isBot ? " (bot)" : ""} · {isMyTurn ? "your turn" : (isBotTurn ? "thinking…" : "waiting…")}
-        </p>
-        {!state.winner && !isBotTurn && (
-          <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${turnRemaining <= 5 ? "bg-red-500/30 text-red-200" : "bg-secondary/60 text-muted-foreground"}`}>
-            <Clock className="h-3 w-3" /> {turnRemaining}s
-          </span>
-        )}
-      </div>
+      {/* Main game grid: left cards | board | right cards/actions */}
+      <section className="mx-auto grid max-w-6xl items-center gap-2 sm:gap-4"
+               style={{ gridTemplateColumns: "auto 1fr auto" }}>
+        {/* Left column: red (top) + green (bottom) */}
+        <div className="flex flex-col gap-3 sm:gap-4">
+          {renderCard("red")}
+          {renderCard("green")}
+        </div>
 
-      <section className="mx-auto flex max-w-6xl justify-center">
-        <Board
-          tokens={state.tokens}
-          currentPlayer={state.currentPlayer}
-          movableTokenIds={movableTokenIds}
-          onTokenClick={handleTokenClick}
-          killedTokenIds={killedIds}
-          playerNames={playerNames}
-          centerContent={
-            <CenterDice
-              value={state.diceValue}
-              rolling={rollingLocal}
-              onRoll={handleRollClick}
-              disabled={state.hasRolled || !!state.winner || !isMyTurn || isBotTurn}
-              color={PLAYER_HEX[state.currentPlayer]}
-            />
-          }
-        />
+        {/* Board */}
+        <div className="flex justify-center">
+          <Board
+            tokens={state.tokens}
+            currentPlayer={state.currentPlayer}
+            movableTokenIds={movableTokenIds}
+            onTokenClick={handleTokenClick}
+            killedTokenIds={killedIds}
+            playerNames={playerNames}
+            centerContent={
+              <CenterDice
+                value={state.diceValue}
+                rolling={rollingLocal}
+                onRoll={handleRollClick}
+                disabled={state.hasRolled || !!state.winner || !isMyTurn || isBotTurn}
+                color={PLAYER_HEX[state.currentPlayer]}
+              />
+            }
+          />
+        </div>
+
+        {/* Right column: blue (top) + yellow (bottom) + side actions */}
+        <div className="flex flex-col gap-3 sm:gap-4">
+          {renderCard("blue")}
+          {renderCard("yellow")}
+          <div className="flex flex-col gap-2 mt-1">
+            <button
+              className="side-action"
+              onClick={() => navigate("/lobby")}
+              aria-label="Restart"
+              title="Back to lobby"
+            >
+              <RotateCcw className="h-5 w-5 mb-0.5" style={{ color: "hsl(45 100% 65%)" }} />
+              <span>Exit</span>
+            </button>
+            <button
+              className="side-action"
+              onClick={() => setSoundOn((s) => !s)}
+              aria-label="Settings"
+            >
+              <Settings className="h-5 w-5 mb-0.5" style={{ color: "hsl(280 95% 75%)" }} />
+              <span>Sound</span>
+            </button>
+          </div>
+        </div>
       </section>
 
       {state.winner && (
