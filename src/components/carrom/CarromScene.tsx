@@ -59,6 +59,8 @@ function SceneInner({ onReady, onShotResolved, currentSide, shooting, interactiv
   const shotInProgress = useRef(false);
   const shotTimer = useRef(0);
   const restCounter = useRef(0);
+  const shotPocketedIds = useRef<Set<string>>(new Set());
+  const shotStrikerPocketed = useRef(false);
 
   const { camera, gl } = useThree();
   const dragMode = useRef<DragMode>(null);
@@ -76,6 +78,8 @@ function SceneInner({ onReady, onShotResolved, currentSide, shooting, interactiv
       setStrikerPosition: (x, z) => phys.setStrikerPosition(x, z),
       shoot: (dx, dz, p) => {
         phys.resetShotLog();
+        shotPocketedIds.current.clear();
+        shotStrikerPocketed.current = false;
         phys.shoot(dx, dz, p);
         shotInProgress.current = true;
         shotTimer.current = 0;
