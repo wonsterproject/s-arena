@@ -215,12 +215,13 @@ export default function PoolMatch() {
 
   const groupCounts = useMemo(() => {
     return match.players.map(p => {
-      if (!p.group) return { remaining: 7, label: "", color: "hsl(232 50% 30%)" };
+      if (!p.group) return { remaining: 7, label: "", color: "hsl(232 50% 30%)", colorAlpha: "hsl(232 50% 30% / 0.5)" };
       const remaining = 7 - p.pottedCount;
       return {
         remaining,
         label: p.group === "solid" ? "Solids" : "Stripes",
         color: p.group === "solid" ? "hsl(215 95% 45%)" : "hsl(28 95% 50%)",
+        colorAlpha: p.group === "solid" ? "hsl(215 95% 55% / 0.65)" : "hsl(28 95% 55% / 0.7)",
       };
     });
   }, [match]);
