@@ -55,10 +55,10 @@ export function createPhysicsWorld(
   floorBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
   world.addBody(floorBody);
 
-  // Walls (4 sides) — slightly inside the board edge
-  const wallH = 0.5;
-  const wallT = 0.2;
-  const wallLen = BOARD.size + wallT * 2;
+  // Walls (4 sides) — thick & tall so fast pieces never tunnel through
+  const wallH = 1.5;
+  const wallT = 0.6;
+  const wallLen = BOARD.size + wallT * 2 + 0.5;
   const halfPlusGap = BOARD.half + 0.05;
   const makeWall = (x: number, z: number, sx: number, sz: number) => {
     const shape = new CANNON.Box(new CANNON.Vec3(sx, wallH, sz));
@@ -89,6 +89,8 @@ export function createPhysicsWorld(
     // Lock vertical motion + tipping: only XZ translation and Y-axis spin allowed
     body.linearFactor.set(1, 0, 1);
     body.angularFactor.set(0, 1, 0);
+    (body as any).ccdSpeedThreshold = 1;
+    (body as any).ccdIterations = 5;
     world.addBody(body);
     return { id: p.id, color: p.color, body, pocketed: false };
   });
@@ -108,6 +110,8 @@ export function createPhysicsWorld(
   striker.position.set(0, STRIKER.height / 2 + 0.01, BOARD.baselineY);
   striker.linearFactor.set(1, 0, 1);
   striker.angularFactor.set(0, 1, 0);
+  (striker as any).ccdSpeedThreshold = 1;
+  (striker as any).ccdIterations = 5;
   world.addBody(striker);
 
   // Shot log: first contact tracking
@@ -126,7 +130,30 @@ export function createPhysicsWorld(
     pieces,
     striker,
     step(dt: number) {
-      world.step(1 / 60, dt, 3);
+      // Clamp speeds to keep solver stable & prevent tunneling
+      const MAX_SPEED = 60;
+      const clamp = (b: CANNON.Body) => {
+        const sp = b.velocity.length();
+        if (sp > MAX_SPEED) b.velocity.scale(MAX_SPEED / sp, b.velocity);
+      };
+      clamp(striker);
+      for (const p of pieces) if (!p.pocketed) clamp(p.body);
+
+      world.step(1 / 120, dt, 6);
+
+      // Safety net: if a body somehow escaped the play area, snap it back inside
+      const limit = BOARD.half - PIECE.radius - 0.02;
+      const snap = (b: CANNON.Body, r: number) => {
+        const lim = BOARD.half - r - 0.02;
+        let changed = false;
+        if (b.position.x > lim)  { b.position.x = lim;  b.velocity.x = -Math.abs(b.velocity.x) * 0.4; changed = true; }
+        if (b.position.x < -lim) { b.position.x = -lim; b.velocity.x =  Math.abs(b.velocity.x) * 0.4; changed = true; }
+        if (b.position.z > lim)  { b.position.z = lim;  b.velocity.z = -Math.abs(b.velocity.z) * 0.4; changed = true; }
+        if (b.position.z < -lim) { b.position.z = -lim; b.velocity.z =  Math.abs(b.velocity.z) * 0.4; changed = true; }
+        if (changed) b.wakeUp();
+      };
+      for (const p of pieces) if (!p.pocketed) snap(p.body, PIECE.radius);
+      snap(striker, STRIKER.radius);
     },
     isAtRest() {
       const speed = (b: CANNON.Body) => b.velocity.length() + b.angularVelocity.length() * 0.1;

@@ -99,12 +99,30 @@ export default function CarromMatch() {
   const me = match.players[match.turn];
   const isHumanTurn = !me.isBot && !shooting && match.winner === null;
 
+  const you = match.players[0];
+  const opp = match.players[1];
+  const colorsAssigned = !!you.color;
+
   const titleText = match.winner !== null
     ? `${match.players[match.winner].name} wins!`
     : me.isBot ? "Opponent's Turn" : "Your Turn";
   const subtitle = match.winner !== null
     ? "Game Over"
-    : shooting ? "Shot in progress..." : me.isBot ? "Thinking..." : "Aiming Shot...";
+    : shooting
+      ? (match.message || "Shot in progress...")
+      : !colorsAssigned
+        ? "Pocket any coin to claim your color"
+        : me.isBot ? "Thinking..." : "Aiming Shot...";
+
+  const ColorDot = ({ c }: { c: "white" | "black" | null }) => (
+    <span
+      className="inline-block h-3 w-3 rounded-full border border-white/30"
+      style={{
+        background: c === "white" ? "hsl(45 30% 85%)" : c === "black" ? "hsl(0 0% 15%)" : "hsl(0 0% 40%)",
+        boxShadow: c ? "0 0 6px hsl(45 100% 60% / 0.5)" : undefined,
+      }}
+    />
+  );
 
   return (
     <main className="min-h-screen px-2 py-2 sm:py-3 overflow-hidden">
@@ -116,13 +134,37 @@ export default function CarromMatch() {
           onRestart={restart}
         />
 
+        {/* Compact status strip: scores + colors */}
+        <div className="flex items-center justify-between gap-2 px-3 py-1.5 mb-1 rounded-xl text-xs"
+          style={{
+            background: "linear-gradient(180deg, hsl(232 50% 14% / 0.9), hsl(232 55% 8% / 0.9))",
+            boxShadow: "0 0 0 1px hsl(45 100% 60% / 0.25) inset",
+          }}
+        >
+          <div className="flex items-center gap-1.5 font-bold text-white">
+            <ColorDot c={you.color} />
+            <span>You</span>
+            <span className="text-amber-300">{you.score}</span>
+            {you.queenCovered && <span className="text-red-400">♛</span>}
+          </div>
+          <div className="text-[10px] uppercase tracking-wider text-indigo-200/70">
+            {colorsAssigned ? `${you.color} vs ${opp.color}` : "colors unclaimed"}
+          </div>
+          <div className="flex items-center gap-1.5 font-bold text-white">
+            {opp.queenCovered && <span className="text-red-400">♛</span>}
+            <span className="text-amber-300">{opp.score}</span>
+            <span>{opp.name}</span>
+            <ColorDot c={opp.color} />
+          </div>
+        </div>
+
         {/* Board fills remaining space, square, centered */}
         <div className="flex-1 flex items-center justify-center min-h-0">
           <div
             className="rounded-2xl overflow-hidden"
             style={{
-              width: "min(100%, calc(100vh - 110px))",
-              height: "min(100%, calc(100vh - 110px))",
+              width: "min(100%, calc(100vh - 150px))",
+              height: "min(100%, calc(100vh - 150px))",
               aspectRatio: "1 / 1",
               boxShadow: "0 0 0 2px hsl(45 100% 60% / 0.4) inset, 0 6px 24px rgba(0,0,0,0.6)",
             }}
