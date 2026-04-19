@@ -52,11 +52,21 @@ export default function GameTopBar({ title, subtitle, onBack, onRestart, infoTex
           </div>
           <Diamond />
         </div>
-        {subtitle && (
+        {infoText ? (
+          <div
+            className="mt-1.5 px-3 py-0.5 rounded-full text-[11px] sm:text-xs font-black tracking-wide text-white"
+            style={{
+              background: "linear-gradient(180deg, hsl(232 50% 14%), hsl(232 55% 8%))",
+              boxShadow: `0 0 0 1.5px ${infoColor || "hsl(45 100% 60% / 0.55)"} inset, 0 0 10px ${infoColor || "hsl(45 100% 60% / 0.35)"}`,
+            }}
+          >
+            {infoText}
+          </div>
+        ) : subtitle ? (
           <div className="mt-1 text-[11px] sm:text-xs font-semibold text-indigo-200/80 tracking-wider">
             {subtitle}
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Right controls */}
