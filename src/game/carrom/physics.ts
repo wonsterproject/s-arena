@@ -22,6 +22,8 @@ export interface PhysicsWorld {
   /** Track first contact for foul detection. Reset before each shot. */
   resetShotLog: () => void;
   getShotLog: () => { firstContact: PieceColor | "striker" | null; hitAny: boolean };
+  /** Subscribe to coin-on-coin / striker-on-coin collision events for SFX. Returns unsubscribe. */
+  onCollision: (cb: (info: { speed: number; isStrikerHit: boolean }) => void) => () => void;
   destroy: () => void;
 }
 
