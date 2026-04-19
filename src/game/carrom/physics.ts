@@ -130,7 +130,30 @@ export function createPhysicsWorld(
     pieces,
     striker,
     step(dt: number) {
-      world.step(1 / 60, dt, 3);
+      // Clamp speeds to keep solver stable & prevent tunneling
+      const MAX_SPEED = 60;
+      const clamp = (b: CANNON.Body) => {
+        const sp = b.velocity.length();
+        if (sp > MAX_SPEED) b.velocity.scale(MAX_SPEED / sp, b.velocity);
+      };
+      clamp(striker);
+      for (const p of pieces) if (!p.pocketed) clamp(p.body);
+
+      world.step(1 / 120, dt, 6);
+
+      // Safety net: if a body somehow escaped the play area, snap it back inside
+      const limit = BOARD.half - PIECE.radius - 0.02;
+      const snap = (b: CANNON.Body, r: number) => {
+        const lim = BOARD.half - r - 0.02;
+        let changed = false;
+        if (b.position.x > lim)  { b.position.x = lim;  b.velocity.x = -Math.abs(b.velocity.x) * 0.4; changed = true; }
+        if (b.position.x < -lim) { b.position.x = -lim; b.velocity.x =  Math.abs(b.velocity.x) * 0.4; changed = true; }
+        if (b.position.z > lim)  { b.position.z = lim;  b.velocity.z = -Math.abs(b.velocity.z) * 0.4; changed = true; }
+        if (b.position.z < -lim) { b.position.z = -lim; b.velocity.z =  Math.abs(b.velocity.z) * 0.4; changed = true; }
+        if (changed) b.wakeUp();
+      };
+      for (const p of pieces) if (!p.pocketed) snap(p.body, PIECE.radius);
+      snap(striker, STRIKER.radius);
     },
     isAtRest() {
       const speed = (b: CANNON.Body) => b.velocity.length() + b.angularVelocity.length() * 0.1;
