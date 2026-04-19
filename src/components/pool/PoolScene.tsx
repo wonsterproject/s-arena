@@ -294,78 +294,117 @@ const PoolScene = forwardRef<PoolSceneApi, Props>(function PoolScene(
       }
     }
 
-    // Balls (with rolling spin marker)
+    // Balls — rendered as rotating spheres. Markers (number circles / stripe
+    // band) are placed on the surface and projected so that as the ball rolls
+    // they orbit around its body for a real rotation feel.
     for (const b of balls) {
       if (b.pocketed) continue;
       const { px, py } = worldToCanvas(b.x, b.z, size.w, size.h);
       const r = (BALL.radius / TABLE.width) * size.w;
 
-      // Shadow
+      // Drop shadow
       ctx.fillStyle = "rgba(0,0,0,0.4)";
       ctx.beginPath(); ctx.arc(px + 1.5, py + 2.5, r, 0, Math.PI * 2); ctx.fill();
 
       const color = BALL_COLORS[b.id] ?? "#fff";
       const angle = spinRef.current[b.id] ?? 0;
       const dir = (spinRef.current as any)[b.id + "_dir"] ?? 0;
+      // roll: how far around the ball we've rotated (radians)
+      const roll = angle;
 
-      // Save & rotate around ball center for marker / stripe orientation
       ctx.save();
       ctx.translate(px, py);
-      ctx.rotate(dir);
-      // Apply rolling rotation along travel direction by offsetting marker.
-      // The "rolling" is conveyed by the moving stripe band / number circle
-      // shifted by `angle` modulated to a small visual oscillation.
-      const roll = (angle % (Math.PI * 2));
+      ctx.rotate(dir);  // align local x-axis with travel direction
 
+      // ===== Base sphere body =====
       if (b.kind === "stripe") {
-        // White ball base
+        // White poles (top + bottom caps), colored equator band that orbits.
         ctx.fillStyle = "#fff";
         ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
-        // Colored stripe band (perpendicular to travel direction so it appears to roll)
+
+        // Colored band: a horizontal stripe whose vertical position is fixed
+        // in screen-perpendicular axis (across travel), but whose visible
+        // height is modulated by roll → looks like the band rotates around.
         ctx.save();
         ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.clip();
         ctx.fillStyle = color;
-        // Band positioned by roll → moves across face as ball rolls
-        const bandShift = Math.sin(roll) * r * 0.5;
-        ctx.fillRect(-r, -r * 0.45 + bandShift, r * 2, r * 0.9);
+        // Base band height + breathing as ball rolls
+        const halfBand = r * 0.55;
+        ctx.fillRect(-r, -halfBand, r * 2, halfBand * 2);
+        // Top + bottom white caps shrink/grow with roll to simulate stripe
+        // rotating off the visible face.
+        const capShift = Math.cos(roll) * r * 0.35;
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(-r, -halfBand + capShift - r * 0.3, r * 2, r * 0.3);
+        ctx.fillRect(-r,  halfBand + capShift, r * 2, r * 0.3);
         ctx.restore();
       } else {
         ctx.fillStyle = color;
         ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
       }
 
-      // Highlight
+      // ===== Number markers (front + back of travel axis) =====
+      // Two antipodal markers at angles `roll` and `roll + π`, placed on the
+      // equator (so x = cos(θ) on the local axis, projected).
+      // We render the marker that is currently in the front hemisphere (cosθ >= 0)
+      // larger and fully opaque; the back one is hidden.
+      if (b.id !== 0) {
+        const drawMarker = (theta: number) => {
+          const cosT = Math.cos(theta);
+          if (cosT < 0.05) return; // back of sphere — hidden by body
+          // x position along travel axis on sphere surface, projected to screen
+          const localX = Math.sin(theta) * r * 0.78;
+          // Marker shrinks as it approaches the silhouette (foreshortening)
+          const scale = 0.42 * (0.4 + 0.6 * cosT);
+          const mr = r * scale;
+          // White disc
+          ctx.fillStyle = "#fff";
+          ctx.beginPath(); ctx.arc(localX, 0, mr, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = "rgba(0,0,0,0.25)";
+          ctx.lineWidth = 0.8;
+          ctx.beginPath(); ctx.arc(localX, 0, mr, 0, Math.PI * 2); ctx.stroke();
+          // Number — counter-rotate so digits stay upright
+          ctx.save();
+          ctx.translate(localX, 0);
+          ctx.rotate(-dir);
+          ctx.fillStyle = "#000";
+          ctx.font = `bold ${Math.max(7, mr * 1.25)}px sans-serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(String(b.id), 0, 0.5);
+          ctx.restore();
+        };
+        // Two antipodal markers offset by π so as ball rolls one disappears
+        // behind while the other emerges — real rolling feel.
+        drawMarker(roll);
+        drawMarker(roll + Math.PI);
+      } else {
+        // Cue ball — small red dot orbiting the surface
+        const cosT = Math.cos(roll);
+        if (cosT > -0.2) {
+          const localX = Math.sin(roll) * r * 0.55;
+          ctx.fillStyle = "#dc2626";
+          ctx.beginPath();
+          ctx.arc(localX, 0, r * 0.13 * (0.5 + 0.5 * Math.max(0, cosT)), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // Highlight (3D sheen)
       const hl = ctx.createRadialGradient(-r * 0.4, -r * 0.4, 0, 0, 0, r);
-      hl.addColorStop(0, "rgba(255,255,255,0.65)");
-      hl.addColorStop(0.6, "rgba(255,255,255,0)");
+      hl.addColorStop(0, "rgba(255,255,255,0.55)");
+      hl.addColorStop(0.55, "rgba(255,255,255,0)");
       ctx.fillStyle = hl;
       ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
 
-      if (b.id !== 0) {
-        // Number circle that rolls across the ball face
-        const offX = Math.cos(roll) * r * 0.45;
-        const offY = Math.sin(roll) * r * 0.15;
-        ctx.fillStyle = "#fff";
-        ctx.beginPath(); ctx.arc(offX, offY, r * 0.42, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "#000";
-        ctx.font = `bold ${Math.max(8, r * 0.7)}px sans-serif`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        // Counter-rotate text so it stays readable
-        ctx.save();
-        ctx.translate(offX, offY);
-        ctx.rotate(-dir);
-        ctx.fillText(String(b.id), 0, 0.5);
-        ctx.restore();
-      } else {
-        // Cue ball — small red dot that rolls (classic spin indicator)
-        const offX = Math.cos(roll) * r * 0.5;
-        const offY = Math.sin(roll) * r * 0.15;
-        ctx.fillStyle = "#dc2626";
-        ctx.beginPath(); ctx.arc(offX, offY, r * 0.13, 0, Math.PI * 2); ctx.fill();
-      }
+      // Soft rim shadow for depth
+      const rim = ctx.createRadialGradient(0, 0, r * 0.6, 0, 0, r);
+      rim.addColorStop(0, "rgba(0,0,0,0)");
+      rim.addColorStop(1, "rgba(0,0,0,0.35)");
+      ctx.fillStyle = rim;
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
 
-      ctx.strokeStyle = "rgba(0,0,0,0.4)";
+      ctx.strokeStyle = "rgba(0,0,0,0.5)";
       ctx.lineWidth = 1;
       ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
