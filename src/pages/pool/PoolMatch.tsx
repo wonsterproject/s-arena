@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Trophy, Coins, Circle, CircleDot } from "lucide-react";
+import { Trophy } from "lucide-react";
 import PoolScene, { type PoolSceneApi } from "@/components/pool/PoolScene";
 import { createMatch, resolveShot } from "@/game/pool/rules";
 import { applyShot } from "@/game/pool/physics";
@@ -8,7 +8,6 @@ import { planBotShot, type Difficulty } from "@/game/pool/bot";
 import type { Ball, MatchState, ShotResult } from "@/game/pool/types";
 import { TABLE, BALL, POCKETS, PHYS } from "@/game/pool/constants";
 import GameTopBar from "@/components/game/GameTopBar";
-import PlayerInfoCard from "@/components/game/PlayerInfoCard";
 import VerticalPowerStrip from "@/components/game/VerticalPowerStrip";
 import LandscapeGate from "@/components/pool/LandscapeGate";
 
