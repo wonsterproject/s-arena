@@ -81,7 +81,7 @@ export function TouchControls({ state, onReload }: Props) {
       const dy = ev.clientY - lookTouch.current.lastY;
       lookTouch.current.lastX = ev.clientX;
       lookTouch.current.lastY = ev.clientY;
-      const sens = 0.0045;
+      const sens = 0.012;
       // Drag right → camera pans right → yaw decreases
       state.current.lookDX -= dx * sens;
       // Drag down → look down → pitch decreases
@@ -126,8 +126,8 @@ export function TouchControls({ state, onReload }: Props) {
       const dB = b - (lastBeta ?? b);
       lastAlpha = a; lastBeta = b;
       // sensitivity multiplier
-      state.current.lookDX += dA * 1.0;
-      state.current.lookDY += dB * 0.6;
+      state.current.lookDX += dA * 2.2;
+      state.current.lookDY += dB * 1.4;
     };
     window.addEventListener("deviceorientation", handler, true);
     return () => window.removeEventListener("deviceorientation", handler, true);
