@@ -552,13 +552,24 @@ export default function Match() {
           )}
         </div>
 
-        <button
-          onClick={() => setSoundOn((s) => !s)}
-          className="glass-btn h-10 w-10 !p-0 flex items-center justify-center"
-          aria-label="Toggle sound"
-        >
-          {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setBoardTheme((t) => (t === "realistic" ? "classic" : "realistic"))}
+            className="glass-btn h-10 px-3 inline-flex items-center gap-1.5 text-xs font-bold"
+            aria-label="Switch board theme"
+            title={boardTheme === "realistic" ? "Switch to Classic theme" : "Switch to Realistic theme"}
+          >
+            <Palette className="h-4 w-4" />
+            <span className="hidden sm:inline capitalize">{boardTheme === "realistic" ? "Classic" : "Realistic"}</span>
+          </button>
+          <button
+            onClick={() => setSoundOn((s) => !s)}
+            className="glass-btn h-10 w-10 !p-0 flex items-center justify-center"
+            aria-label="Toggle sound"
+          >
+            {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+          </button>
+        </div>
       </header>
 
       {/* Main game grid: on mobile only board; on sm+ side player cards */}
