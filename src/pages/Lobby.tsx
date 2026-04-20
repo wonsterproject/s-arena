@@ -106,7 +106,7 @@ export default function Lobby() {
     if (!user) return;
     const { data } = await supabase
       .from("match_invites")
-      .select("id, match_id, from_user, to_user, mode, status, profile:from_user ( username ), match:match_id ( game_type, bet_amount )")
+      .select("id, match_id, from_user, to_user, mode, status, profile:from_user ( username ), match:matches!match_invites_match_id_fkey ( game_type, bet_amount )")
       .eq("to_user", user.id)
       .eq("status", "pending");
     const mapped: MatchInvite[] = ((data ?? []) as any[]).map((r) => ({
