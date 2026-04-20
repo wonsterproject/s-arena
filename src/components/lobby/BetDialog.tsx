@@ -13,26 +13,41 @@ interface Props {
   mode: "1v1" | "2v2";
   maxCoins: number;
   onConfirm: (bet: number) => Promise<void> | void;
+  /** Minimum bet allowed. Defaults to 0 (free) for backward compatibility. */
+  minBet?: number;
+  /** Optional game label, e.g. "Chess", "Carrom", "Pool", "Arena". */
+  gameLabel?: string;
 }
 
-const PRESETS = [0, 100, 500, 1000, 5000];
-
-export default function BetDialog({ open, onClose, friendName, mode, maxCoins, onConfirm }: Props) {
-  const [bet, setBet] = useState<number>(0);
+export default function BetDialog({
+  open, onClose, friendName, mode, maxCoins, onConfirm, minBet = 0, gameLabel,
+}: Props) {
+  const initialBet = Math.max(minBet, 0);
+  const [bet, setBet] = useState<number>(initialBet);
   const [submitting, setSubmitting] = useState(false);
+
+  // Build presets that always include the minimum bet first
+  const PRESETS = (() => {
+    const base = [50, 100, 500, 1000, 5000];
+    const filtered = base.filter((v) => v >= minBet);
+    if (minBet > 0 && !filtered.includes(minBet)) filtered.unshift(minBet);
+    if (minBet === 0) filtered.unshift(0);
+    return Array.from(new Set(filtered)).sort((a, b) => a - b);
+  })();
 
   const handleConfirm = async () => {
     setSubmitting(true);
     try {
       await onConfirm(bet);
       onClose();
-      setBet(0);
+      setBet(initialBet);
     } finally {
       setSubmitting(false);
     }
   };
 
   const tooHigh = bet > maxCoins;
+  const tooLow = bet < minBet;
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && !submitting && onClose()}>
@@ -40,10 +55,12 @@ export default function BetDialog({ open, onClose, friendName, mode, maxCoins, o
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {mode === "1v1" ? <Swords className="h-5 w-5 text-primary" /> : <Users className="h-5 w-5 text-primary" />}
-            Invite @{friendName} — {mode}
+            Invite @{friendName} — {gameLabel ? `${gameLabel} ` : ""}{mode}
           </DialogTitle>
           <DialogDescription>
-            Bet coins lagao. Winner takes all. 0 ka matlab friendly match (no coins).
+            {minBet > 0
+              ? `Minimum bet ${minBet} coins. Winner takes all.`
+              : "Bet coins lagao. Winner takes all. 0 ka matlab friendly match (no coins)."}
           </DialogDescription>
         </DialogHeader>
 
@@ -59,14 +76,17 @@ export default function BetDialog({ open, onClose, friendName, mode, maxCoins, o
             <Label className="text-xs">Bet amount per player</Label>
             <Input
               type="number"
-              min={0}
+              min={minBet}
               max={maxCoins}
               value={bet}
               onChange={(e) => setBet(Math.max(0, Math.min(maxCoins, Number(e.target.value))))}
               className="bg-secondary/50 mt-1 text-lg font-bold"
             />
             {tooHigh && <p className="text-xs text-red-400 mt-1">Aap kay paas itne coins nahi hain</p>}
-            {bet > 0 && !tooHigh && (
+            {tooLow && !tooHigh && (
+              <p className="text-xs text-red-400 mt-1">Minimum bet {minBet} coins required</p>
+            )}
+            {!tooLow && !tooHigh && bet > 0 && (
               <p className="text-xs text-muted-foreground mt-1">
                 Pot total: <strong>{bet * (mode === "1v1" ? 2 : 4)} coins</strong> · winner takes all
               </p>
@@ -93,7 +113,7 @@ export default function BetDialog({ open, onClose, friendName, mode, maxCoins, o
           </button>
           <button
             onClick={handleConfirm}
-            disabled={submitting || tooHigh || bet < 0}
+            disabled={submitting || tooHigh || tooLow}
             className="glass-btn h-10 px-4 bg-gradient-to-r from-primary/40 to-accent/40 font-bold flex items-center gap-2"
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Coins className="h-4 w-4 text-yellow-400" />}
