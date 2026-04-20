@@ -381,18 +381,25 @@ export default function Match() {
     return mySeat?.color === state.currentPlayer;
   }, [state, user, seats, isBotTurn, amHost, mySeat]);
 
-  // Bot autoplay (only host drives)
+  // Bot autoplay (only host drives) — guard so we only schedule one action per (player, hasRolled, version)
+  const botActionKeyRef = useRef<string>("");
   useEffect(() => {
     if (!state || !seats || state.winner || loadingMatch) return;
     if (!isBotTurn || !amHost) return;
-    if (rollingLocal || animating) return;
+    if (rollingLocal || animating || movingRef.current) return;
+
+    const key = `${state.currentPlayer}|${state.hasRolled ? "moved" : "roll"}|${state.version}`;
+    if (botActionKeyRef.current === key) return;
+    botActionKeyRef.current = key;
 
     if (!state.hasRolled) {
       const t = window.setTimeout(() => { void rollDice(); }, 800);
       return () => window.clearTimeout(t);
     } else {
       const t = window.setTimeout(() => {
-        const choice = chooseBotMove(state.tokens, state.currentPlayer, state.diceValue);
+        const cur = stateRef.current;
+        if (!cur) return;
+        const choice = chooseBotMove(cur.tokens, cur.currentPlayer, cur.diceValue);
         if (choice) void moveToken(choice);
       }, 700);
       return () => window.clearTimeout(t);

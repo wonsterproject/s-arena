@@ -1,9 +1,13 @@
 import { ReactNode } from "react";
 import {
   HOME_BASE,
+  HOME_PATHS,
+  MAIN_PATH,
   PLAYER_HEX,
   PlayerColor,
   PLAYERS,
+  SAFE_TILES,
+  START_INDEX,
   Token,
   getTokenCell,
   tileKey,
@@ -327,60 +331,88 @@ function ClassicBoardBackground() {
         </svg>
       </div>
 
-      {/* Colored arms leading to center */}
-      <PathArm color={colors.red} top={7} left={1} width={5} height={1} />
-      <PathArm color={colors.yellow} top={9} left={7} width={1} height={5} />
-      <PathArm color={colors.green} top={7} left={9} width={5} height={1} />
-      <PathArm color={colors.blue} top={1} left={7} width={1} height={5} />
-
+      {/* PathGrid renders all path tiles including colored home-column arms */}
       <PathGrid />
     </div>
   );
 }
 
-function PathArm({ color, top, left, width, height }: { color: string; top: number; left: number; width: number; height: number }) {
-  return (
-    <div
-      className="absolute"
-      style={{
-        top: `${(top / SIZE) * 100}%`,
-        left: `${(left / SIZE) * 100}%`,
-        width: `${(width / SIZE) * 100}%`,
-        height: `${(height / SIZE) * 100}%`,
-        background: color,
-        boxShadow: "inset 0 0 0 1px hsl(0 0% 0% / 0.25)",
-      }}
-    />
-  );
-}
-
 function PathGrid() {
-  const cells: { r: number; c: number }[] = [];
+  // Build per-cell color/role map
+  const cellInfo = new Map<string, { bg: string; star?: boolean; arrowColor?: string }>();
+
+  // 1) Plain white path cells across the cross
   for (let r = 0; r < SIZE; r++) {
     for (let c = 0; c < SIZE; c++) {
       const isCol = c >= 6 && c <= 8;
       const isRow = r >= 6 && r <= 8;
       const inHome = (r < 6 && c < 6) || (r < 6 && c > 8) || (r > 8 && c < 6) || (r > 8 && c > 8);
       const inCenter = r >= 6 && r <= 8 && c >= 6 && c <= 8;
-      if ((isCol || isRow) && !inHome && !inCenter) cells.push({ r, c });
+      if ((isCol || isRow) && !inHome && !inCenter) {
+        cellInfo.set(`${r},${c}`, { bg: "hsl(0 0% 98%)" });
+      }
     }
   }
+
+  // 2) Color the home-column (winning) tiles for each player
+  PLAYERS.forEach((p) => {
+    HOME_PATHS[p].forEach(([r, c]) => {
+      cellInfo.set(`${r},${c}`, { bg: PLAYER_HEX[p] });
+    });
+  });
+
+  // 3) Mark safe tiles with star
+  SAFE_TILES.forEach((k) => {
+    const info = cellInfo.get(k);
+    if (info) info.star = true;
+  });
+
+  // 4) Mark each player's start tile with their color tint + arrow
+  PLAYERS.forEach((p) => {
+    const [r, c] = MAIN_PATH[START_INDEX[p]];
+    const k = `${r},${c}`;
+    const info = cellInfo.get(k);
+    if (info) {
+      info.bg = `${PLAYER_HEX[p]}`;
+      info.arrowColor = "hsl(0 0% 100%)";
+    }
+  });
+
   return (
     <div className="absolute inset-0 pointer-events-none">
-      {cells.map(({ r, c }) => (
-        <div
-          key={`p-${r}-${c}`}
-          className="absolute"
-          style={{
-            top: `${(r / SIZE) * 100}%`,
-            left: `${(c / SIZE) * 100}%`,
-            width: `${(1 / SIZE) * 100}%`,
-            height: `${(1 / SIZE) * 100}%`,
-            background: "hsl(0 0% 98%)",
-            boxShadow: "inset 0 0 0 1px hsl(0 0% 0% / 0.18)",
-          }}
-        />
-      ))}
+      {Array.from(cellInfo.entries()).map(([key, info]) => {
+        const [r, c] = key.split(",").map(Number);
+        return (
+          <div
+            key={`p-${key}`}
+            className="absolute flex items-center justify-center"
+            style={{
+              top: `${(r / SIZE) * 100}%`,
+              left: `${(c / SIZE) * 100}%`,
+              width: `${(1 / SIZE) * 100}%`,
+              height: `${(1 / SIZE) * 100}%`,
+              background: info.bg,
+              boxShadow: "inset 0 0 0 1px hsl(0 0% 0% / 0.22)",
+            }}
+          >
+            {info.star && (
+              <svg viewBox="0 0 24 24" className="h-[70%] w-[70%]" aria-hidden>
+                <polygon
+                  points="12,2 14.6,9 22,9 16,13.5 18.2,21 12,16.5 5.8,21 8,13.5 2,9 9.4,9"
+                  fill="hsl(0 0% 0% / 0.55)"
+                  stroke="hsl(0 0% 0% / 0.7)"
+                  strokeWidth="0.6"
+                />
+              </svg>
+            )}
+            {info.arrowColor && !info.star && (
+              <svg viewBox="0 0 24 24" className="h-[60%] w-[60%]" aria-hidden>
+                <polygon points="4,12 14,5 14,9 20,9 20,15 14,15 14,19" fill={info.arrowColor} stroke="hsl(0 0% 0% / 0.4)" strokeWidth="0.5" />
+              </svg>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
