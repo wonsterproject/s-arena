@@ -589,6 +589,7 @@ export default function Match() {
             onTokenClick={handleTokenClick}
             killedTokenIds={killedIds}
             playerNames={playerNames}
+            theme={boardTheme}
             centerContent={
               <CenterDice
                 value={state.diceValue}
