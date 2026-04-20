@@ -258,3 +258,129 @@ function PawnSVG({ color }: { color: string }) {
     </svg>
   );
 }
+
+/**
+ * Classic Ludo board background — clean, colorful, the original look.
+ * Pure CSS/SVG, no realistic image. Recreates the four corner home
+ * quadrants, the cross paths and the colored center triangles.
+ */
+function ClassicBoardBackground() {
+  const colors: Record<PlayerColor, string> = {
+    red: PLAYER_HEX.red,
+    blue: PLAYER_HEX.blue,
+    green: PLAYER_HEX.green,
+    yellow: PLAYER_HEX.yellow,
+  };
+  return (
+    <div
+      className="absolute inset-0 rounded-[1.4rem] overflow-hidden"
+      style={{
+        background: "linear-gradient(135deg, hsl(220 25% 14%), hsl(225 30% 9%))",
+        boxShadow: "inset 0 0 0 2px hsl(45 90% 55% / 0.4), 0 12px 40px hsl(0 0% 0% / 0.5)",
+      }}
+    >
+      {([
+        { color: colors.red,    style: { top: 0, left: 0 } as const },
+        { color: colors.blue,   style: { top: 0, right: 0 } as const },
+        { color: colors.yellow, style: { bottom: 0, left: 0 } as const },
+        { color: colors.green,  style: { bottom: 0, right: 0 } as const },
+      ]).map((q, i) => (
+        <div
+          key={i}
+          className="absolute"
+          style={{
+            width: `${(6 / SIZE) * 100}%`,
+            height: `${(6 / SIZE) * 100}%`,
+            background: `linear-gradient(135deg, ${q.color}, ${q.color}cc)`,
+            boxShadow: `inset 0 0 0 3px hsl(0 0% 100% / 0.25), inset 0 0 30px hsl(0 0% 0% / 0.35)`,
+            ...q.style,
+          }}
+        >
+          <div
+            className="absolute rounded-md"
+            style={{
+              inset: "14%",
+              background: "hsl(0 0% 98%)",
+              boxShadow: "inset 0 0 0 2px hsl(0 0% 0% / 0.15)",
+            }}
+          />
+        </div>
+      ))}
+
+      {/* Center 3x3 with 4 colored triangles */}
+      <div
+        className="absolute"
+        style={{
+          left: `${(6 / SIZE) * 100}%`,
+          top: `${(6 / SIZE) * 100}%`,
+          width: `${(3 / SIZE) * 100}%`,
+          height: `${(3 / SIZE) * 100}%`,
+          background: "hsl(0 0% 98%)",
+          boxShadow: "inset 0 0 0 2px hsl(0 0% 0% / 0.2)",
+        }}
+      >
+        <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full">
+          <polygon points="0,0 100,0 50,50" fill={colors.blue} />
+          <polygon points="100,0 100,100 50,50" fill={colors.green} />
+          <polygon points="100,100 0,100 50,50" fill={colors.yellow} />
+          <polygon points="0,100 0,0 50,50" fill={colors.red} />
+        </svg>
+      </div>
+
+      {/* Colored arms leading to center */}
+      <PathArm color={colors.red} top={7} left={1} width={5} height={1} />
+      <PathArm color={colors.yellow} top={9} left={7} width={1} height={5} />
+      <PathArm color={colors.green} top={7} left={9} width={5} height={1} />
+      <PathArm color={colors.blue} top={1} left={7} width={1} height={5} />
+
+      <PathGrid />
+    </div>
+  );
+}
+
+function PathArm({ color, top, left, width, height }: { color: string; top: number; left: number; width: number; height: number }) {
+  return (
+    <div
+      className="absolute"
+      style={{
+        top: `${(top / SIZE) * 100}%`,
+        left: `${(left / SIZE) * 100}%`,
+        width: `${(width / SIZE) * 100}%`,
+        height: `${(height / SIZE) * 100}%`,
+        background: color,
+        boxShadow: "inset 0 0 0 1px hsl(0 0% 0% / 0.25)",
+      }}
+    />
+  );
+}
+
+function PathGrid() {
+  const cells: { r: number; c: number }[] = [];
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      const isCol = c >= 6 && c <= 8;
+      const isRow = r >= 6 && r <= 8;
+      const inHome = (r < 6 && c < 6) || (r < 6 && c > 8) || (r > 8 && c < 6) || (r > 8 && c > 8);
+      const inCenter = r >= 6 && r <= 8 && c >= 6 && c <= 8;
+      if ((isCol || isRow) && !inHome && !inCenter) cells.push({ r, c });
+    }
+  }
+  return (
+    <div className="absolute inset-0 pointer-events-none">
+      {cells.map(({ r, c }) => (
+        <div
+          key={`p-${r}-${c}`}
+          className="absolute"
+          style={{
+            top: `${(r / SIZE) * 100}%`,
+            left: `${(c / SIZE) * 100}%`,
+            width: `${(1 / SIZE) * 100}%`,
+            height: `${(1 / SIZE) * 100}%`,
+            background: "hsl(0 0% 98%)",
+            boxShadow: "inset 0 0 0 1px hsl(0 0% 0% / 0.18)",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
