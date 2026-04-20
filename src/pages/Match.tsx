@@ -400,7 +400,12 @@ export default function Match() {
         const cur = stateRef.current;
         if (!cur) return;
         const choice = chooseBotMove(cur.tokens, cur.currentPlayer, cur.diceValue);
-        if (choice) void moveToken(choice);
+        if (choice) {
+          void moveToken(choice);
+        } else {
+          // No movable tokens — end the turn so the bot doesn't get stuck
+          endTurn(false);
+        }
       }, 700);
       return () => window.clearTimeout(t);
     }
