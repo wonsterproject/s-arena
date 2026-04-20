@@ -81,6 +81,13 @@ export default function Match() {
   const [state, setState] = useState<GameState | null>(null);
   const stateRef = useRef<GameState | null>(null);
   const [soundOn, setSoundOn] = useState(true);
+  const [boardTheme, setBoardTheme] = useState<BoardTheme>(() => {
+    if (typeof window === "undefined") return "realistic";
+    return (localStorage.getItem("ludo:boardTheme") as BoardTheme) || "realistic";
+  });
+  useEffect(() => {
+    try { localStorage.setItem("ludo:boardTheme", boardTheme); } catch {}
+  }, [boardTheme]);
   const [killedIds, setKilledIds] = useState<Set<string>>(new Set());
   const [animating, setAnimating] = useState(false);
   const [rollingLocal, setRollingLocal] = useState(false);
