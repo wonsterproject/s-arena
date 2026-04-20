@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Bot, Cpu, Swords, Target } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import FriendsInvitePanel from "@/components/lobby/FriendsInvitePanel";
 
 export default function PoolLobby() {
   const navigate = useNavigate();
@@ -35,10 +36,10 @@ export default function PoolLobby() {
             </div>
           </div>
 
+          <FriendsInvitePanel game="pool" gameLabel="Pool" />
+
           <div className="glass rounded-2xl p-4 text-sm text-muted-foreground">
-            🪙 Balance: <span className="font-bold text-yellow-400">{profile?.coins ?? 0}</span> coins
-            <br />
-            <span className="text-xs">Online friend matches with coin betting — coming soon.</span>
+            🪙 Balance: <span className="font-bold text-yellow-400">{profile?.coins ?? 0}</span> coins · Min bet 50 · Winner takes all
           </div>
 
           <div className="glass rounded-2xl p-4 text-sm">

@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Bot, Cpu, Swords, Users, Circle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import FriendsInvitePanel from "@/components/lobby/FriendsInvitePanel";
 
 export default function CarromLobby() {
   const navigate = useNavigate();
@@ -41,10 +42,10 @@ export default function CarromLobby() {
             <ModeBtn icon={<Users className="h-5 w-5" />} title="Pass & Play" desc="Same device, two players" onClick={startLocal} />
           </div>
 
+          <FriendsInvitePanel game="carrom" gameLabel="Carrom" />
+
           <div className="glass rounded-2xl p-4 text-sm text-muted-foreground">
-            🪙 Balance: <span className="font-bold text-yellow-400">{profile?.coins ?? 0}</span> coins
-            <br />
-            <span className="text-xs">Online friend matches with coin betting — coming in next update.</span>
+            🪙 Balance: <span className="font-bold text-yellow-400">{profile?.coins ?? 0}</span> coins · Min bet 50 · Winner takes all
           </div>
         </section>
       </div>
