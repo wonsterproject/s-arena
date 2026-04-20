@@ -4,9 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 
-export type GameType = "ludo" | "chess" | "carrom" | "pool";
-// Note: "arena" is not a DB enum value yet, so we route arena via "ludo" placeholder
-// (kept for future migration). Pages handle arena separately.
+export type GameType = "ludo" | "chess" | "carrom" | "pool" | "arena";
 
 interface Friend {
   id: string;
@@ -21,6 +19,7 @@ const ROUTE_BY_GAME: Record<GameType, (id: string) => string> = {
   chess: (id) => `/chess/play?mode=online&id=${id}`,
   carrom: (id) => `/carrom/play?mode=online&id=${id}`,
   pool: (id) => `/pool/play?mode=online&id=${id}`,
+  arena: (id) => `/arena/play?mode=online&id=${id}`,
 };
 
 export function gameRoute(game: GameType, matchId: string) {
@@ -67,7 +66,7 @@ export function useFriendInvite(game: GameType) {
         _mode: mode,
         _opponent: friendId,
         _bet: bet,
-        _game: game,
+        _game: game as any,
       });
       if (error || !matchId) throw error ?? new Error("Failed");
       toast({ title: "Invite sent!", description: `${bet} coins locked. Waiting for friend…` });
