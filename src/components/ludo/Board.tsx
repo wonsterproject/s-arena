@@ -331,12 +331,7 @@ function ClassicBoardBackground() {
         </svg>
       </div>
 
-      {/* Colored arms leading to center */}
-      <PathArm color={colors.red} top={7} left={1} width={5} height={1} />
-      <PathArm color={colors.yellow} top={9} left={7} width={1} height={5} />
-      <PathArm color={colors.green} top={7} left={9} width={5} height={1} />
-      <PathArm color={colors.blue} top={1} left={7} width={1} height={5} />
-
+      {/* PathGrid renders all path tiles including colored home-column arms */}
       <PathGrid />
     </div>
   );
