@@ -85,6 +85,7 @@ export function respawn(e: Entity, state: ArenaState) {
   e.hp = e.maxHp; e.alive = true;
   e.ammo = WEAPON.mag; e.reserve = WEAPON.reserve;
   e.reloading = false; e.recoil = 0; e.respawnAt = 0;
+  e.crouch = false; e.animPhase = 0; e.fireFlashAt = 0;
   // face center
   e.yaw = Math.atan2(0 - e.pos.x, 0 - e.pos.z);
   e.pitch = 0;
@@ -94,6 +95,7 @@ function startReload(e: Entity, now: number) {
   if (e.reloading || e.ammo === WEAPON.mag || e.reserve === 0) return;
   e.reloading = true;
   e.reloadEnd = now + WEAPON.reloadMs;
+  if (!e.isBot) playReload();
 }
 
 function finishReload(e: Entity) {
