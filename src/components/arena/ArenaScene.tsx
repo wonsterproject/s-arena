@@ -367,8 +367,8 @@ export function ArenaScene({ state, selfId, ads }: Props) {
         (c.rightLeg.children[1] as THREE.Group).rotation.x = -rkneeRot;
         // Left arm sways slightly opposite to right leg (right arm holds rifle steady)
         c.leftArm.rotation.x = -0.5 + (-swing * armSwingScale);
-        // Slight torso bob
-        c.torso.position.y = 1.05 + (moving ? Math.abs(Math.sin(e.animPhase)) * 0.04 : 0);
+        // Torso stays stable — no bob (realistic physics: upper body stabilises while walking)
+        c.torso.position.y = 1.05;
 
         // Crouch leg pose: bend hips & knees
         if (e.crouch) {

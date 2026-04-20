@@ -43,7 +43,7 @@ export default function ArenaMatch() {
     const onKU = (e: KeyboardEvent) => { keysRef.current[e.code] = false; };
     const onMM = (e: MouseEvent) => {
       if (!mouseLockedRef.current) return;
-      const sens = 0.0065;
+      const sens = 0.012;
       // Drag right → camera pans right → player yaw decreases (world rotates left)
       ctrlRef.current.lookDX -= e.movementX * sens;
       // Drag down → look down → pitch decreases (negative pitch = looking down in our convention)
