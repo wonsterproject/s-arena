@@ -330,29 +330,66 @@ export function ArenaScene({ state, selfId, ads }: Props) {
       lastT = now;
       const st = stateRef.current;
 
-      // Update characters
+      // Update characters — limb animation, crouch, aim, recoil
       for (const e of st.entities) {
         const c = characters.get(e.id);
         if (!c) continue;
         c.group.visible = e.alive;
-        c.group.position.set(e.pos.x, e.pos.y, e.pos.z);
+        // Crouch sinks the body ~0.35m
+        const crouchSink = e.crouch ? 0.35 : 0;
+        c.group.position.set(e.pos.x, e.pos.y - crouchSink, e.pos.z);
         c.group.rotation.y = e.yaw;
-        // Tilt gun by pitch (only the gun + slight head)
-        c.gun.rotation.x = -e.pitch;
-        c.gun.position.set(0.28, 1.3 - e.pitch * 0.05, 0.55);
-        c.muzzle.position.set(0.28, 1.3 - e.pitch * 0.05, 1.05);
-        c.head.rotation.x = -e.pitch * 0.5;
+
+        // Pitch the upper body / arms toward aim
+        const pitch = e.pitch;
+        c.torso.rotation.x = -pitch * 0.35;
+        c.head.rotation.x = -pitch * 0.55;
+        // Both arms rotate at shoulder for aim
+        const aimArmX = -pitch - 0.25;
+        c.rightArm.rotation.x = aimArmX - 0.3;
+        // Recoil kick
+        const sinceFire = now - e.fireFlashAt;
+        const kick = sinceFire < 90 ? (1 - sinceFire / 90) * 0.35 : 0;
+        c.rightArm.rotation.x -= kick;
+        c.gun.position.z = 0.18 - kick * 0.08;
+
+        // Leg / arm swing while moving
+        const horiz = Math.hypot(e.vel.x, e.vel.z);
+        const moving = horiz > 0.4 && Math.abs(e.pos.y) < 0.05;
+        const swing = moving ? Math.sin(e.animPhase) * Math.min(0.7, horiz / 6) : 0;
+        const armSwingScale = e.crouch ? 0.25 : 0.5;
+        c.leftLeg.rotation.x = swing * 0.9;
+        c.rightLeg.rotation.x = -swing * 0.9;
+        // bend back knee a bit on the lifted side
+        const lkneeRot = Math.max(0, swing) * 0.6;
+        const rkneeRot = Math.max(0, -swing) * 0.6;
+        (c.leftLeg.children[1] as THREE.Group).rotation.x = -lkneeRot;
+        (c.rightLeg.children[1] as THREE.Group).rotation.x = -rkneeRot;
+        // Left arm sways slightly opposite to right leg (right arm holds rifle steady)
+        c.leftArm.rotation.x = -0.5 + (-swing * armSwingScale);
+        // Slight torso bob
+        c.torso.position.y = 1.05 + (moving ? Math.abs(Math.sin(e.animPhase)) * 0.04 : 0);
+
+        // Crouch leg pose: bend hips & knees
+        if (e.crouch) {
+          c.leftLeg.rotation.x += 0.6;
+          c.rightLeg.rotation.x += 0.6;
+          (c.leftLeg.children[1] as THREE.Group).rotation.x = -1.2;
+          (c.rightLeg.children[1] as THREE.Group).rotation.x = -1.2;
+        }
+
         // HP fill
         const ratio = Math.max(0, e.hp / e.maxHp);
         c.hpFill.scale.x = ratio;
-        c.hpFill.position.x = -(1 - ratio) * 0.5;
+        c.hpFill.position.x = -(1 - ratio) * 0.44;
         (c.hpFill.material as THREE.MeshBasicMaterial).color.setHex(
           ratio > 0.6 ? 0x4ade80 : ratio > 0.3 ? 0xfacc15 : 0xef4444
         );
-        // billboard hp bar to camera
         c.hpFill.quaternion.copy(camera.quaternion);
-        // hide hp on self (we have HUD)
-        c.hpFill.visible = e.id !== selfId;
+        c.hpBg.quaternion.copy(camera.quaternion);
+        const hideHp = e.id === selfId;
+        c.hpFill.visible = !hideHp;
+        c.hpBg.visible = !hideHp;
       }
 
       // Tracers — rebuild
