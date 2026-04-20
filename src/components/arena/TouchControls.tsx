@@ -82,10 +82,8 @@ export function TouchControls({ state, onReload }: Props) {
       const dy = ev.clientY - lookTouch.current.lastY;
       lookTouch.current.lastX = ev.clientX;
       lookTouch.current.lastY = ev.clientY;
-      const sens = 0.012;
-      // Drag right → camera pans right → yaw decreases
+      const sens = 0.035;
       state.current.lookDX -= dx * sens;
-      // Drag down → look down → pitch decreases
       state.current.lookDY -= dy * sens;
     };
     const onLookEnd = (ev: PointerEvent) => {
@@ -110,25 +108,31 @@ export function TouchControls({ state, onReload }: Props) {
   }, [state]);
 
   // Gyro: use deviceorientation (alpha=yaw, beta=pitch)
+  // Gyro with low-pass smoothing
   useEffect(() => {
     if (!gyroOn) return;
     let lastAlpha: number | null = null;
     let lastBeta: number | null = null;
+    let smoothDA = 0;
+    let smoothDB = 0;
+    const SMOOTH = 0.25; // low-pass factor (0=ignore, 1=raw)
     const handler = (ev: DeviceOrientationEvent) => {
       if (ev.alpha == null || ev.beta == null) return;
-      // alpha 0..360 (compass yaw), beta -180..180 (front-back tilt)
       const a = (ev.alpha * Math.PI) / 180;
       const b = (ev.beta * Math.PI) / 180;
       if (lastAlpha == null) { lastAlpha = a; lastBeta = b; return; }
       let dA = a - lastAlpha;
-      // wrap
       if (dA >  Math.PI) dA -= Math.PI * 2;
       if (dA < -Math.PI) dA += Math.PI * 2;
       const dB = b - (lastBeta ?? b);
       lastAlpha = a; lastBeta = b;
-      // sensitivity multiplier
-      state.current.lookDX += dA * 2.2;
-      state.current.lookDY += dB * 1.4;
+      // Low-pass filter for smoothness
+      smoothDA = smoothDA * (1 - SMOOTH) + dA * SMOOTH;
+      smoothDB = smoothDB * (1 - SMOOTH) + dB * SMOOTH;
+      // Dead-zone: ignore micro jitter
+      const deadZone = 0.002;
+      if (Math.abs(smoothDA) > deadZone) state.current.lookDX += smoothDA * 3.0;
+      if (Math.abs(smoothDB) > deadZone) state.current.lookDY += smoothDB * 2.0;
     };
     window.addEventListener("deviceorientation", handler, true);
     return () => window.removeEventListener("deviceorientation", handler, true);
