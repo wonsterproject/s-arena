@@ -175,41 +175,42 @@ export function fireWeapon(e: Entity, ads: boolean, state: ArenaState, now: numb
 }
 
 export function stepEntityMovement(e: Entity, input: MoveInput, dt: number) {
+  // Crouch toggle (crouch overrides sprint)
+  e.crouch = !!input.crouch;
+
   // Yaw smoothing
   const dy = input.desiredYaw - e.yaw;
   const wrapped = Math.atan2(Math.sin(dy), Math.cos(dy));
   e.yaw += wrapped * Math.min(1, dt * PLAYER.rotSpeed);
   e.pitch = Math.max(-0.9, Math.min(0.9, input.desiredPitch));
 
-  // Local input → world direction relative to yaw
-  // Convention: yaw=0 faces +Z. Camera sits behind on -Z looking toward +Z.
-  // From the on-screen viewpoint, world +X appears on the LEFT, so screen-right strafe = world -X.
-  const speed = input.sprint ? PLAYER.sprintSpeed : PLAYER.walkSpeed;
+  // Speed: crouch slows by 50%, sprint boosts (no sprint while crouched)
+  const baseSpeed = e.crouch
+    ? PLAYER.walkSpeed * 0.5
+    : (input.sprint ? PLAYER.sprintSpeed : PLAYER.walkSpeed);
   const f = input.forward, r = input.right;
   const len = Math.hypot(f, r) || 1;
   const nf = f / Math.max(1, len);
   const nr = r / Math.max(1, len);
-  // forward axis (world) = (sin(yaw), cos(yaw)); right-on-screen axis (world) = (-cos(yaw), sin(yaw))
   const wx = Math.sin(e.yaw) * nf - Math.cos(e.yaw) * nr;
   const wz = Math.cos(e.yaw) * nf + Math.sin(e.yaw) * nr;
 
-  const targetVx = wx * speed;
-  const targetVz = wz * speed;
+  const targetVx = wx * baseSpeed;
+  const targetVz = wz * baseSpeed;
 
-  // Accel
   e.vel.x += (targetVx - e.vel.x) * Math.min(1, dt * PLAYER.accel * 0.5);
   e.vel.z += (targetVz - e.vel.z) * Math.min(1, dt * PLAYER.accel * 0.5);
-  // Friction when no input
   if (Math.hypot(f, r) < 0.05) {
     const damp = Math.max(0, 1 - PLAYER.friction * dt);
     e.vel.x *= damp; e.vel.z *= damp;
   }
 
-  // Jump
-  if (input.jump && Math.abs(e.pos.y) < 0.01 && e.vel.y <= 0.01) {
+  // Jump (cannot jump while crouched)
+  const grounded = Math.abs(e.pos.y) < 0.01 && e.vel.y <= 0.01;
+  if (input.jump && grounded && !e.crouch) {
     e.vel.y = PLAYER.jumpVel;
+    if (!e.isBot) playJump();
   }
-  // Gravity
   e.vel.y += PLAYER.gravity * dt;
 
   e.pos.x += e.vel.x * dt;
@@ -220,6 +221,20 @@ export function stepEntityMovement(e: Entity, input: MoveInput, dt: number) {
 
   clampToArena(e.pos);
   resolveCovers(e.pos);
+
+  // Animation phase + footstep cadence
+  const horizSpeed = Math.hypot(e.vel.x, e.vel.z);
+  if (horizSpeed > 0.4 && grounded) {
+    const cadence = (e.crouch ? 4.0 : (input.sprint ? 9.5 : 7.0));
+    const prev = e.animPhase;
+    e.animPhase = (e.animPhase + cadence * dt) % (Math.PI * 2);
+    // footstep when crossing 0 or π
+    const crossed = (Math.floor(prev / Math.PI) !== Math.floor(e.animPhase / Math.PI));
+    if (crossed && !e.isBot) playFootstep();
+  } else {
+    // ease back toward neutral
+    e.animPhase = e.animPhase * Math.max(0, 1 - 6 * dt);
+  }
 }
 
 export function decayWeapon(e: Entity, dt: number, now: number) {
