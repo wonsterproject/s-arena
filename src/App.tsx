@@ -22,6 +22,8 @@ import CarromLobby from "./pages/carrom/CarromLobby.tsx";
 import CarromMatch from "./pages/carrom/CarromMatch.tsx";
 import PoolLobby from "./pages/pool/PoolLobby.tsx";
 import PoolMatch from "./pages/pool/PoolMatch.tsx";
+import ArenaLobby from "./pages/arena/ArenaLobby.tsx";
+import ArenaMatch from "./pages/arena/ArenaMatch.tsx";
 
 
 const queryClient = new QueryClient();
@@ -46,6 +48,8 @@ const App = () => (
             <Route path="/carrom/play" element={<ProtectedRoute><CarromMatch /></ProtectedRoute>} />
             <Route path="/pool/lobby" element={<ProtectedRoute><PoolLobby /></ProtectedRoute>} />
             <Route path="/pool/play" element={<ProtectedRoute><PoolMatch /></ProtectedRoute>} />
+            <Route path="/arena/lobby" element={<ProtectedRoute><ArenaLobby /></ProtectedRoute>} />
+            <Route path="/arena/play" element={<ProtectedRoute><ArenaMatch /></ProtectedRoute>} />
             <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/shop" element={<ProtectedRoute><Shop /></ProtectedRoute>} />
