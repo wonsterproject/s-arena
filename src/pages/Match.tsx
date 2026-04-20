@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import confetti from "canvas-confetti";
-import { Volume2, VolumeX, Trophy, ArrowLeft, Loader2, Clock, Users, RotateCcw, Settings, Sparkles } from "lucide-react";
-import { Board } from "@/components/ludo/Board";
+import { Volume2, VolumeX, Trophy, ArrowLeft, Loader2, Clock, Users, RotateCcw, Settings, Sparkles, Palette } from "lucide-react";
+import { Board, type BoardTheme } from "@/components/ludo/Board";
 import { CenterDice } from "@/components/ludo/CenterDice";
 import { MatchChat } from "@/components/ludo/MatchChat";
 import { PlayerCard } from "@/components/ludo/PlayerCard";
@@ -81,6 +81,13 @@ export default function Match() {
   const [state, setState] = useState<GameState | null>(null);
   const stateRef = useRef<GameState | null>(null);
   const [soundOn, setSoundOn] = useState(true);
+  const [boardTheme, setBoardTheme] = useState<BoardTheme>(() => {
+    if (typeof window === "undefined") return "realistic";
+    return (localStorage.getItem("ludo:boardTheme") as BoardTheme) || "realistic";
+  });
+  useEffect(() => {
+    try { localStorage.setItem("ludo:boardTheme", boardTheme); } catch {}
+  }, [boardTheme]);
   const [killedIds, setKilledIds] = useState<Set<string>>(new Set());
   const [animating, setAnimating] = useState(false);
   const [rollingLocal, setRollingLocal] = useState(false);
@@ -495,8 +502,8 @@ export default function Match() {
 
   return (
     <main className="relative min-h-screen px-2 py-3 md:py-5 overflow-hidden">
-      <LavaBackground />
-      <AmbientParticles count={10} />
+      {boardTheme === "realistic" && <LavaBackground />}
+      {boardTheme === "realistic" && <AmbientParticles count={10} />}
 
       {/* Top header */}
       <header className="mx-auto mb-3 flex max-w-6xl items-center justify-between px-2">
@@ -545,13 +552,24 @@ export default function Match() {
           )}
         </div>
 
-        <button
-          onClick={() => setSoundOn((s) => !s)}
-          className="glass-btn h-10 w-10 !p-0 flex items-center justify-center"
-          aria-label="Toggle sound"
-        >
-          {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setBoardTheme((t) => (t === "realistic" ? "classic" : "realistic"))}
+            className="glass-btn h-10 px-3 inline-flex items-center gap-1.5 text-xs font-bold"
+            aria-label="Switch board theme"
+            title={boardTheme === "realistic" ? "Switch to Classic theme" : "Switch to Realistic theme"}
+          >
+            <Palette className="h-4 w-4" />
+            <span className="hidden sm:inline capitalize">{boardTheme === "realistic" ? "Classic" : "Realistic"}</span>
+          </button>
+          <button
+            onClick={() => setSoundOn((s) => !s)}
+            className="glass-btn h-10 w-10 !p-0 flex items-center justify-center"
+            aria-label="Toggle sound"
+          >
+            {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+          </button>
+        </div>
       </header>
 
       {/* Main game grid: on mobile only board; on sm+ side player cards */}
@@ -571,6 +589,7 @@ export default function Match() {
             onTokenClick={handleTokenClick}
             killedTokenIds={killedIds}
             playerNames={playerNames}
+            theme={boardTheme}
             centerContent={
               <CenterDice
                 value={state.diceValue}
