@@ -10,6 +10,7 @@ export type TouchControlState = {
   jump: boolean;
   reload: boolean;
   sprint: boolean;
+  crouch: boolean;
 };
 
 interface Props {
@@ -189,6 +190,11 @@ export function TouchControls({ state, onReload }: Props) {
       {/* Right action buttons — 70% transparent */}
       <div className="absolute bottom-6 right-6 z-20 flex flex-col items-end gap-3 touch-none">
         <div className="flex items-end gap-3">
+          <button
+            onPointerDown={(e) => { e.preventDefault(); state.current.crouch = !state.current.crouch; }}
+            className="w-14 h-14 rounded-full border border-white/20 text-white text-xs font-bold backdrop-blur"
+            style={{ backgroundColor: state.current.crouch ? "rgba(34,211,238,0.45)" : "rgba(0,0,0,0.3)" }}
+          >CROUCH</button>
           <button
             onPointerDown={(e) => { e.preventDefault(); onReload(); }}
             className="w-14 h-14 rounded-full border border-white/20 text-white text-xs font-bold backdrop-blur"
