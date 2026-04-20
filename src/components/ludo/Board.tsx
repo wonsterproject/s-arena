@@ -337,22 +337,6 @@ function ClassicBoardBackground() {
   );
 }
 
-function PathArm({ color, top, left, width, height }: { color: string; top: number; left: number; width: number; height: number }) {
-  return (
-    <div
-      className="absolute"
-      style={{
-        top: `${(top / SIZE) * 100}%`,
-        left: `${(left / SIZE) * 100}%`,
-        width: `${(width / SIZE) * 100}%`,
-        height: `${(height / SIZE) * 100}%`,
-        background: color,
-        boxShadow: "inset 0 0 0 1px hsl(0 0% 0% / 0.25)",
-      }}
-    />
-  );
-}
-
 function PathGrid() {
   // Build per-cell color/role map
   const cellInfo = new Map<string, { bg: string; star?: boolean; arrowColor?: string }>();
