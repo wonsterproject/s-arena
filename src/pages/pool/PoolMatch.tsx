@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Trophy } from "lucide-react";
+import { Trophy, Wifi, Coins, Loader2 } from "lucide-react";
 import PoolScene, { type PoolSceneApi } from "@/components/pool/PoolScene";
 import { createMatch, resolveShot } from "@/game/pool/rules";
 import { applyShot } from "@/game/pool/physics";
@@ -10,6 +10,20 @@ import { TABLE, BALL, POCKETS, PHYS } from "@/game/pool/constants";
 import GameTopBar from "@/components/game/GameTopBar";
 import VerticalPowerStrip from "@/components/game/VerticalPowerStrip";
 import LandscapeGate from "@/components/pool/LandscapeGate";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "@/hooks/use-toast";
+
+type Mode = "bot" | "local" | "online";
+
+interface OnlineMeta {
+  matchId: string;
+  mySide: 0 | 1;
+  opponentName: string;
+  opponentId: string | null;
+  betAmount: number;
+  status: "waiting" | "active" | "finished" | "cancelled";
+}
 
 function physicsStep(
   balls: Ball[],
@@ -81,7 +95,10 @@ function physicsStep(
 export default function PoolMatch() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
+  const mode = (params.get("mode") || "bot") as Mode;
   const diff = (params.get("diff") || "medium") as Difficulty;
+  const onlineMatchId = params.get("id");
+  const { user, refreshProfile } = useAuth();
 
   const [match, setMatch] = useState<MatchState>(() => createMatch("You", `Bot (${diff})`, 1));
   const [animBalls, setAnimBalls] = useState<Ball[]>(() => match.balls.map(b => ({ ...b })));
@@ -92,19 +109,21 @@ export default function PoolMatch() {
   const animRef = useRef<number | null>(null);
   const sceneRef = useRef<PoolSceneApi | null>(null);
 
-  // Compute table size that fits inside available viewport (landscape).
+  const [online, setOnline] = useState<OnlineMeta | null>(null);
+  const [loadingOnline, setLoadingOnline] = useState(mode === "online");
+  const finalizingRef = useRef(false);
+  const skipNextPushRef = useRef(false);
+
   const [tableSize, setTableSize] = useState({ w: 800, h: 400 });
   useEffect(() => {
     const recalc = () => {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       const isMobile = Math.min(vw, vh) < 600;
-      // On mobile (landscape) we shrink reserves so the table dominates the screen.
-      const horizReserve = isMobile ? 52 : 80;   // power strip + small gap
-      const vertReserve  = isMobile ? 120 : 200; // topbar + bottom HUD
+      const horizReserve = isMobile ? 52 : 80;
+      const vertReserve  = isMobile ? 120 : 200;
       const availW = vw - horizReserve;
       const availH = vh - vertReserve;
-      // Table aspect 2:1
       let w = Math.min(availW, availH * 2);
       let h = w / 2;
       if (h > availH) { h = availH; w = h * 2; }
@@ -123,6 +142,60 @@ export default function PoolMatch() {
     };
   }, []);
 
+  // ===== ONLINE init + subscribe =====
+  useEffect(() => {
+    if (mode !== "online" || !onlineMatchId || !user) return;
+    let cancelled = false;
+    const init = async () => {
+      const { data: m, error } = await supabase
+        .from("matches").select("id, host_id, status, bet_amount, state")
+        .eq("id", onlineMatchId).maybeSingle();
+      if (cancelled) return;
+      if (error || !m) { toast({ title: "Match not found", variant: "destructive" }); navigate("/pool/lobby"); return; }
+      const { data: players } = await supabase.from("match_players")
+        .select("user_id").eq("match_id", onlineMatchId);
+      const me = (players ?? []).find(p => p.user_id === user.id);
+      const opp = (players ?? []).find(p => p.user_id !== user.id);
+      if (!me) { toast({ title: "Not part of this match", variant: "destructive" }); navigate("/pool/lobby"); return; }
+      const mySide: 0 | 1 = m.host_id === user.id ? 0 : 1;
+      let oppName = "Opponent";
+      if (opp?.user_id) {
+        const { data: oppP } = await supabase.from("profiles")
+          .select("username, display_name").eq("id", opp.user_id).maybeSingle();
+        oppName = oppP?.display_name || oppP?.username || "Opponent";
+      }
+      const start = createMatch(mySide === 0 ? "You" : oppName, mySide === 0 ? oppName : "You", null);
+      const initial = (m.state && (m.state as any).balls) ? (m.state as any) : start;
+      setMatch(initial);
+      setAnimBalls(initial.balls.map((b: Ball) => ({ ...b })));
+      setOnline({ matchId: m.id, mySide, opponentName: oppName, opponentId: opp?.user_id ?? null,
+        betAmount: m.bet_amount ?? 0, status: m.status as any });
+      setLoadingOnline(false);
+    };
+    void init();
+
+    const ch = supabase.channel(`pool-match-${onlineMatchId}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${onlineMatchId}` },
+        (payload) => {
+          const newRow: any = payload.new;
+          if (newRow.state && newRow.state.balls) {
+            skipNextPushRef.current = true;
+            const ns = newRow.state as MatchState;
+            setMatch(ns);
+            setAnimBalls(ns.balls.map(b => ({ ...b })));
+          }
+          if (newRow.status === "finished") setOnline(p => p ? { ...p, status: "finished" } : p);
+        }).subscribe();
+    return () => { cancelled = true; supabase.removeChannel(ch); };
+  }, [mode, onlineMatchId, user, navigate]);
+
+  const pushState = useCallback(async (next: MatchState) => {
+    if (mode !== "online" || !onlineMatchId) return;
+    await supabase.from("matches")
+      .update({ state: next as any, updated_at: new Date().toISOString() })
+      .eq("id", onlineMatchId);
+  }, [mode, onlineMatchId]);
+
   useEffect(() => {
     if (!shooting) setAnimBalls(match.balls.map(b => ({ ...b })));
   }, [match.balls, shooting]);
@@ -130,10 +203,15 @@ export default function PoolMatch() {
   useEffect(() => { if (shooting) setPower(0); }, [shooting]);
 
   const me = match.players[match.turn];
-  const isHumanTurn = !me.isBot && !shooting && match.winner === null;
+  const isMyTurn = mode === "online" && online ? match.turn === online.mySide : !me.isBot;
+  const isHumanTurn = isMyTurn && !shooting && match.winner === null;
 
   function runShot(dirX: number, dirZ: number, shotPower: number) {
     if (shooting || match.winner !== null) return;
+    if (mode === "online" && online && match.turn !== online.mySide) {
+      toast({ title: "Opponent's turn" });
+      return;
+    }
     setShooting(true);
     setBotHint(null);
 
@@ -168,7 +246,20 @@ export default function PoolMatch() {
         setMatch(prev => {
           const next: MatchState = JSON.parse(JSON.stringify(prev));
           next.balls = working.map(b => ({ ...b }));
-          return resolveShot(next, result);
+          const resolved = resolveShot(next, result);
+          // Online push & finalize
+          if (mode === "online" && online) {
+            void pushState(resolved);
+            if (resolved.winner !== null && online.status !== "finished" && !finalizingRef.current) {
+              finalizingRef.current = true;
+              const winnerUserId = resolved.winner === online.mySide ? user!.id : online.opponentId;
+              if (winnerUserId) {
+                supabase.rpc("finalize_match", { _match_id: online.matchId, _winner_id: winnerUserId })
+                  .then(() => refreshProfile());
+              }
+            }
+          }
+          return resolved;
         });
         setShooting(false);
       }
@@ -176,9 +267,9 @@ export default function PoolMatch() {
     animRef.current = requestAnimationFrame(tick);
   }
 
-  // Bot turn
+  // Bot turn (bot mode only)
   useEffect(() => {
-    if (match.winner !== null) return;
+    if (mode !== "bot" || match.winner !== null) return;
     if (!me.isBot || shooting) return;
     const t = setTimeout(() => {
       const shot = planBotShot(match, diff);
@@ -187,7 +278,7 @@ export default function PoolMatch() {
     }, 600);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [match.turn, match.winner, shooting]);
+  }, [mode, match.turn, match.winner, shooting]);
 
   useEffect(() => () => { if (animRef.current) cancelAnimationFrame(animRef.current); }, []);
 
@@ -208,8 +299,22 @@ export default function PoolMatch() {
   };
 
   const restart = () => {
+    if (mode === "online") return;
     setMatch(createMatch("You", `Bot (${diff})`, 1));
     setPower(0);
+  };
+
+  const resign = async () => {
+    if (mode !== "online" || !online || !user) return;
+    if (online.status === "finished") return;
+    if (!confirm("Resign? Opponent wins the bet pot.")) return;
+    finalizingRef.current = true;
+    if (online.opponentId) {
+      const { error } = await supabase.rpc("finalize_match", {
+        _match_id: online.matchId, _winner_id: online.opponentId,
+      });
+      if (!error) { toast({ title: "You resigned" }); await refreshProfile(); }
+    }
   };
 
   const groupCounts = useMemo(() => {
@@ -227,20 +332,27 @@ export default function PoolMatch() {
 
   const titleText = match.winner !== null
     ? `${match.players[match.winner].name} wins!`
-    : me.isBot ? "Opponent's Turn" : "Your Turn";
+    : isMyTurn ? "Your Turn" : "Opponent's Turn";
 
   const meCount = groupCounts[match.turn];
-  const infoText = match.winner !== null
-    ? "Game Over"
-    : shooting
-      ? "Shot in progress..."
-      : match.ballInHand
-        ? "Place Cue Ball"
-        : meCount.label
-          ? `${meCount.remaining} left • ${meCount.label}`
-          : me.isBot ? "Thinking..." : "Drag to aim, slide power to shoot";
+  const infoText = match.winner !== null ? "Game Over"
+    : shooting ? "Shot in progress..."
+    : match.ballInHand ? "Place Cue Ball"
+    : meCount.label ? `${meCount.remaining} left • ${meCount.label}`
+    : isMyTurn ? "Drag to aim, slide power to shoot" : (mode === "bot" ? "Thinking..." : "Waiting...");
 
   const fireShot = () => sceneRef.current?.shoot();
+
+  if (mode === "online" && loadingOnline) {
+    return (
+      <main className="min-h-screen flex items-center justify-center">
+        <div className="rounded-2xl p-8 text-center bg-card border border-border">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-primary" />
+          <p className="text-sm">Loading match…</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen px-2 py-2 sm:py-3 overflow-hidden">
@@ -251,10 +363,22 @@ export default function PoolMatch() {
           infoText={infoText}
           infoColor={meCount.label ? meCount.colorAlpha : undefined}
           onBack={() => navigate("/pool/lobby")}
-          onRestart={restart}
+          onRestart={mode === "online" ? resign : restart}
         />
 
-        {/* Table + vertical power strip side-by-side */}
+        {mode === "online" && online && (
+          <div className="flex items-center justify-center gap-2 px-3 py-1 mt-1 rounded-xl text-xs bg-primary/10 border border-primary/30">
+            <Wifi className="h-3 w-3 text-green-400" />
+            <span className="font-bold">Online vs @{online.opponentName}</span>
+            {online.betAmount > 0 && (
+              <span className="flex items-center gap-1 text-yellow-400 font-bold">
+                <Coins className="h-3 w-3" /> Pot {online.betAmount * 2}
+              </span>
+            )}
+            {online.status === "waiting" && <span className="text-yellow-300 animate-pulse">Waiting…</span>}
+          </div>
+        )}
+
         <div className="mt-1 flex items-center justify-center gap-2 sm:gap-3">
           <PoolScene
             ref={sceneRef}
@@ -269,14 +393,8 @@ export default function PoolMatch() {
             fixedWidth={tableSize.w}
             fixedHeight={tableSize.h}
           />
-          {/* Vertical power strip, height matches table */}
           <div style={{ height: tableSize.h }} className="flex items-stretch">
-            <VerticalPowerStrip
-              power={power}
-              setPower={setPower}
-              onRelease={fireShot}
-              disabled={!isHumanTurn || !hasAim}
-            />
+            <VerticalPowerStrip power={power} setPower={setPower} onRelease={fireShot} disabled={!isHumanTurn || !hasAim} />
           </div>
         </div>
 
@@ -287,27 +405,20 @@ export default function PoolMatch() {
           </div>
         )}
 
-
-
         {match.winner !== null && (
-          <div
-            className="rounded-2xl p-6 mt-3 text-center"
-            style={{
-              background: "linear-gradient(180deg, hsl(232 50% 16%), hsl(232 55% 9%))",
-              boxShadow: "0 0 0 2px hsl(45 100% 60% / 0.5) inset, 0 0 22px hsl(45 100% 60% / 0.3)",
-            }}
-          >
+          <div className="rounded-2xl p-6 mt-3 text-center"
+            style={{ background: "linear-gradient(180deg, hsl(232 50% 16%), hsl(232 55% 9%))",
+                     boxShadow: "0 0 0 2px hsl(45 100% 60% / 0.5) inset, 0 0 22px hsl(45 100% 60% / 0.3)" }}>
             <Trophy className="h-12 w-12 text-yellow-400 mx-auto mb-2" />
             <h2 className="text-2xl font-black mb-1 text-white">{match.players[match.winner].name} wins!</h2>
-            <button
-              onClick={restart}
+            {mode === "online" && online && online.betAmount > 0 && (
+              <p className="text-sm text-amber-300 mb-2">Pot: {online.betAmount * 2} coins</p>
+            )}
+            <button onClick={mode === "online" ? () => navigate("/pool/lobby") : restart}
               className="mt-3 h-11 px-7 rounded-2xl font-black text-white"
-              style={{
-                background: "linear-gradient(180deg, hsl(28 100% 60%), hsl(20 100% 45%))",
-                boxShadow: "0 0 0 2px hsl(45 100% 60% / 0.5) inset, 0 4px 12px rgba(0,0,0,0.5)",
-              }}
-            >
-              Play Again
+              style={{ background: "linear-gradient(180deg, hsl(28 100% 60%), hsl(20 100% 45%))",
+                       boxShadow: "0 0 0 2px hsl(45 100% 60% / 0.5) inset, 0 4px 12px rgba(0,0,0,0.5)" }}>
+              {mode === "online" ? "Back to Lobby" : "Play Again"}
             </button>
           </div>
         )}
