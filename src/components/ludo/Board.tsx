@@ -1,9 +1,13 @@
 import { ReactNode } from "react";
 import {
   HOME_BASE,
+  HOME_PATHS,
+  MAIN_PATH,
   PLAYER_HEX,
   PlayerColor,
   PLAYERS,
+  SAFE_TILES,
+  START_INDEX,
   Token,
   getTokenCell,
   tileKey,
