@@ -508,9 +508,8 @@ export default function Match() {
   };
 
   return (
-    <main className="relative min-h-screen px-2 py-3 md:py-5 overflow-hidden">
-      {boardTheme === "realistic" && <LavaBackground />}
-      {boardTheme === "realistic" && <AmbientParticles count={10} />}
+    <main className="relative min-h-screen px-2 py-3 md:py-5 overflow-hidden bg-[hsl(225_30%_6%)]">
+      {/* Realistic theme: video itself is the environment — no extra glowing background */}
 
       {/* Top header */}
       <header className="mx-auto mb-3 flex max-w-6xl items-center justify-between px-2">
