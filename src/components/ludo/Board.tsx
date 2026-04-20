@@ -12,7 +12,7 @@ import {
   getTokenCell,
   tileKey,
 } from "@/game/ludoConstants";
-import boardBg from "@/assets/ludo-board-realistic.png";
+const boardVideo = "/videos/ludo-realistic.mp4";
 
 export type BoardTheme = "realistic" | "classic";
 
@@ -65,15 +65,18 @@ export function Board({
 
   return (
     <div className="aspect-square w-full max-w-[760px] relative" role="grid" aria-label="Ludo board">
-      {/* Realistic 3D coal+glass+stone board image — exact reference */}
+      {/* Realistic theme: looping cinematic video acts as the live board surface */}
       {!isClassic && (
-        <img
-          src={boardBg}
-          alt=""
+        <video
+          src={boardVideo}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
           aria-hidden
           className="absolute inset-0 h-full w-full object-cover rounded-[1.4rem] select-none pointer-events-none"
-          draggable={false}
-          style={{ filter: "saturate(1.08) contrast(1.04)" }}
+          style={{ filter: "saturate(1.1) contrast(1.05)" }}
         />
       )}
       {/* Classic theme: clean colorful ludo board built with CSS */}
