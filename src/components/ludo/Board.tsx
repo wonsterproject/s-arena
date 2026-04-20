@@ -46,6 +46,7 @@ export function Board({
   killedTokenIds,
   centerContent,
   playerNames,
+  theme = "realistic",
 }: BoardProps) {
   const cellMap = new Map<string, Token[]>();
   tokens.forEach((t) => {
@@ -56,26 +57,34 @@ export function Board({
     cellMap.set(k, arr);
   });
 
+  const isClassic = theme === "classic";
+
   return (
     <div className="aspect-square w-full max-w-[760px] relative" role="grid" aria-label="Ludo board">
       {/* Realistic 3D coal+glass+stone board image — exact reference */}
-      <img
-        src={boardBg}
-        alt=""
-        aria-hidden
-        className="absolute inset-0 h-full w-full object-cover rounded-[1.4rem] select-none pointer-events-none"
-        draggable={false}
-        style={{ filter: "saturate(1.08) contrast(1.04)" }}
-      />
-      {/* Live ember/heat overlay sits inside the board too */}
-      <div
-        className="absolute inset-0 rounded-[1.4rem] pointer-events-none animate-board-heat"
-        style={{
-          background:
-            "radial-gradient(ellipse at 50% 50%, hsl(20 90% 40% / 0.15), transparent 70%)",
-          mixBlendMode: "screen",
-        }}
-      />
+      {!isClassic && (
+        <img
+          src={boardBg}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-cover rounded-[1.4rem] select-none pointer-events-none"
+          draggable={false}
+          style={{ filter: "saturate(1.08) contrast(1.04)" }}
+        />
+      )}
+      {/* Classic theme: clean colorful ludo board built with CSS */}
+      {isClassic && <ClassicBoardBackground />}
+      {/* Live ember/heat overlay sits inside the board too — only realistic */}
+      {!isClassic && (
+        <div
+          className="absolute inset-0 rounded-[1.4rem] pointer-events-none animate-board-heat"
+          style={{
+            background:
+              "radial-gradient(ellipse at 50% 50%, hsl(20 90% 40% / 0.15), transparent 70%)",
+            mixBlendMode: "screen",
+          }}
+        />
+      )}
       <div
         className="relative grid h-full w-full overflow-hidden rounded-[1.4rem]"
         style={{
