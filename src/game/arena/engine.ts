@@ -168,14 +168,16 @@ export function stepEntityMovement(e: Entity, input: MoveInput, dt: number) {
   e.pitch = Math.max(-0.9, Math.min(0.9, input.desiredPitch));
 
   // Local input → world direction relative to yaw
+  // Convention: yaw=0 faces +Z. Camera sits behind on -Z looking toward +Z.
+  // From the on-screen viewpoint, world +X appears on the LEFT, so screen-right strafe = world -X.
   const speed = input.sprint ? PLAYER.sprintSpeed : PLAYER.walkSpeed;
   const f = input.forward, r = input.right;
   const len = Math.hypot(f, r) || 1;
   const nf = f / Math.max(1, len);
   const nr = r / Math.max(1, len);
-  // forward axis = (sin(yaw), cos(yaw))
-  const wx = Math.sin(e.yaw) * nf + Math.cos(e.yaw) * nr;
-  const wz = Math.cos(e.yaw) * nf - Math.sin(e.yaw) * nr;
+  // forward axis (world) = (sin(yaw), cos(yaw)); right-on-screen axis (world) = (-cos(yaw), sin(yaw))
+  const wx = Math.sin(e.yaw) * nf - Math.cos(e.yaw) * nr;
+  const wz = Math.cos(e.yaw) * nf + Math.sin(e.yaw) * nr;
 
   const targetVx = wx * speed;
   const targetVz = wz * speed;

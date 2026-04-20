@@ -40,8 +40,10 @@ export default function ArenaMatch() {
     const onMM = (e: MouseEvent) => {
       if (!mouseLockedRef.current) return;
       const sens = 0.0025;
-      ctrlRef.current.lookDX += e.movementX * sens;
-      ctrlRef.current.lookDY += e.movementY * sens;
+      // Drag right → camera pans right → player yaw decreases (world rotates left)
+      ctrlRef.current.lookDX -= e.movementX * sens;
+      // Drag down → look down → pitch decreases (negative pitch = looking down in our convention)
+      ctrlRef.current.lookDY -= e.movementY * sens;
     };
     const onMD = (e: MouseEvent) => {
       if (e.button === 0) ctrlRef.current.fire = true;
