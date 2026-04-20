@@ -502,8 +502,8 @@ export default function Match() {
 
   return (
     <main className="relative min-h-screen px-2 py-3 md:py-5 overflow-hidden">
-      <LavaBackground />
-      <AmbientParticles count={10} />
+      {boardTheme === "realistic" && <LavaBackground />}
+      {boardTheme === "realistic" && <AmbientParticles count={10} />}
 
       {/* Top header */}
       <header className="mx-auto mb-3 flex max-w-6xl items-center justify-between px-2">
