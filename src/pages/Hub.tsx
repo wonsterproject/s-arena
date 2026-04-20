@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { LogOut, Coins, Trophy, ShoppingBag, User, ShieldCheck, Crown, Dice5, Circle, Target } from "lucide-react";
+import { LogOut, Coins, Trophy, ShoppingBag, User, ShieldCheck, Crown, Dice5, Circle, Target, Crosshair } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 
@@ -48,6 +48,15 @@ const GAMES: GameCard[] = [
     icon: <Target className="h-12 w-12" />,
     gradient: "from-emerald-700 via-emerald-500 to-lime-400",
     route: "/pool/lobby",
+    status: "live",
+  },
+  {
+    id: "arena",
+    title: "TPP Arena · 1v1",
+    tagline: "Third-person shooter · 3D",
+    icon: <Crosshair className="h-12 w-12" />,
+    gradient: "from-rose-600 via-orange-500 to-amber-400",
+    route: "/arena/lobby",
     status: "live",
   },
 ];
