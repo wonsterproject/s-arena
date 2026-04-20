@@ -36,6 +36,8 @@ interface MatchInvite {
   to_user: string;
   mode: MatchMode;
   status: string;
+  game_type?: "ludo" | "chess" | "carrom" | "pool" | "arena";
+  bet_amount?: number;
   profile?: { username: string };
 }
 
@@ -104,10 +106,21 @@ export default function Lobby() {
     if (!user) return;
     const { data } = await supabase
       .from("match_invites")
-      .select("id, match_id, from_user, to_user, mode, status, profile:from_user ( username )")
+      .select("id, match_id, from_user, to_user, mode, status, profile:from_user ( username ), match:matches!match_invites_match_id_fkey ( game_type, bet_amount )")
       .eq("to_user", user.id)
       .eq("status", "pending");
-    setInvites((data as any) ?? []);
+    const mapped: MatchInvite[] = ((data ?? []) as any[]).map((r) => ({
+      id: r.id,
+      match_id: r.match_id,
+      from_user: r.from_user,
+      to_user: r.to_user,
+      mode: r.mode,
+      status: r.status,
+      profile: r.profile,
+      game_type: r.match?.game_type ?? "ludo",
+      bet_amount: r.match?.bet_amount ?? 0,
+    }));
+    setInvites(mapped);
   };
 
   const doSearch = async () => {
@@ -224,12 +237,21 @@ export default function Lobby() {
     }
   };
 
-  const acceptInvite = async (inviteId: string) => {
+  const acceptInvite = async (invite: MatchInvite) => {
     setCreating(true);
     try {
-      const { data: matchId, error } = await supabase.rpc("accept_match_invite", { _invite_id: inviteId });
+      const { data: matchId, error } = await supabase.rpc("accept_match_invite", { _invite_id: invite.id });
       if (error || !matchId) throw error ?? new Error("Failed");
-      navigate(`/match/${matchId}`);
+      await refreshProfile();
+      const game = invite.game_type ?? "ludo";
+      const routes: Record<string, string> = {
+        ludo: `/match/${matchId}`,
+        chess: `/chess/play?mode=online&id=${matchId}`,
+        carrom: `/carrom/play?mode=online&id=${matchId}`,
+        pool: `/pool/play?mode=online&id=${matchId}`,
+        arena: `/arena/play?mode=online&id=${matchId}`,
+      };
+      navigate(routes[game] ?? `/match/${matchId}`);
     } catch (err: any) {
       toast({ title: "Failed", description: err?.message ?? "Try again", variant: "destructive" });
     } finally {
@@ -313,9 +335,12 @@ export default function Lobby() {
             {invites.map((inv) => (
               <div key={inv.id} className="flex items-center justify-between gap-2 py-2 border-t border-border/40 first:border-t-0">
                 <p className="text-sm flex-1 min-w-0 truncate">
-                  <strong>@{inv.profile?.username ?? "someone"}</strong> invited you to <span className="text-primary">{inv.mode}</span>
+                  <strong>@{inv.profile?.username ?? "someone"}</strong> invited you to{" "}
+                  <span className="text-primary uppercase">{inv.game_type ?? "ludo"}</span>{" "}
+                  <span className="text-primary">{inv.mode}</span>
+                  {inv.bet_amount ? <span className="text-yellow-400"> · 🪙 {inv.bet_amount}</span> : null}
                 </p>
-                <button onClick={() => acceptInvite(inv.id)} disabled={creating} className="glass-btn h-8 text-xs bg-green-500/30 flex items-center gap-1">
+                <button onClick={() => acceptInvite(inv)} disabled={creating} className="glass-btn h-8 text-xs bg-green-500/30 flex items-center gap-1">
                   <Check className="h-3 w-3" /> Accept
                 </button>
                 <button onClick={() => declineInvite(inv.id)} className="glass-btn h-8 !px-2 text-xs text-red-400">

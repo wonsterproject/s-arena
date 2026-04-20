@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Bot, Users, Swords, ArrowLeft, Cpu, Crown } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import FriendsInvitePanel from "@/components/lobby/FriendsInvitePanel";
 
 export default function ChessLobby() {
   const navigate = useNavigate();
@@ -47,10 +48,10 @@ export default function ChessLobby() {
             <ModeBtn icon={<Users className="h-5 w-5" />} title="Pass & Play" desc="Same device, two players" onClick={startLocal} />
           </div>
 
+          <FriendsInvitePanel game="chess" gameLabel="Chess" />
+
           <div className="glass rounded-2xl p-4 text-sm text-muted-foreground">
-            🪙 Your balance: <span className="font-bold text-yellow-400">{profile?.coins ?? 0}</span> coins
-            <br />
-            <span className="text-xs">Wager matches with friends coming next — invite from the Friends tab in Ludo lobby.</span>
+            🪙 Your balance: <span className="font-bold text-yellow-400">{profile?.coins ?? 0}</span> coins · Min bet 50 · Winner takes all
           </div>
         </section>
       </div>
