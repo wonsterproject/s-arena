@@ -10,6 +10,8 @@ import {
 } from "@/game/ludoConstants";
 import boardBg from "@/assets/ludo-board-realistic.png";
 
+export type BoardTheme = "realistic" | "classic";
+
 interface BoardProps {
   tokens: Token[];
   currentPlayer: PlayerColor;
@@ -18,6 +20,7 @@ interface BoardProps {
   killedTokenIds: Set<string>;
   centerContent?: ReactNode;
   playerNames?: Partial<Record<PlayerColor, string>>;
+  theme?: BoardTheme;
 }
 
 const SIZE = 15;
