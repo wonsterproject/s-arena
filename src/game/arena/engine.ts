@@ -112,6 +112,7 @@ export function fireWeapon(e: Entity, ads: boolean, state: ArenaState, now: numb
   if (now - e.lastShotAt < interval) return false;
   e.lastShotAt = now;
   e.ammo -= 1;
+  e.fireFlashAt = now;
 
   const baseSpread = ads ? WEAPON.spreadAds : WEAPON.spreadHip;
   const moving = Math.hypot(e.vel.x, e.vel.z) > 1.5 ? WEAPON.spreadMove : 0;
@@ -143,6 +144,11 @@ export function fireWeapon(e: Entity, ads: boolean, state: ArenaState, now: numb
   e.spread = Math.min(0.18, e.spread + WEAPON.bloomPerShot);
   e.pitch = Math.max(-0.9, Math.min(0.9, e.pitch + WEAPON.recoilPerShot * 0.06));
 
+  // distance from local player (p1) for SFX falloff
+  const self = state.entities.find(x => !x.isBot);
+  const distToSelf = self ? Math.hypot(self.pos.x - e.pos.x, self.pos.z - e.pos.z) : 0;
+  playGunshot(distToSelf);
+
   if (hit.victimId) {
     const victim = state.entities.find(x => x.id === hit.victimId);
     if (victim && victim.alive) {
@@ -150,11 +156,14 @@ export function fireWeapon(e: Entity, ads: boolean, state: ArenaState, now: numb
       victim.hp -= dmg;
       state.lastDamage = { victimId: victim.id, from: { ...e.pos }, at: now };
       onHit?.(victim, dmg, !!hit.headshot);
+      const distVictim = self ? Math.hypot(self.pos.x - victim.pos.x, self.pos.z - victim.pos.z) : 0;
+      playHit(distVictim);
       if (victim.hp <= 0) {
         victim.hp = 0; victim.alive = false; victim.deaths += 1;
         e.kills += 1;
         victim.respawnAt = now + MATCH.respawnMs;
         state.killFeed.push({ id: nid(), shooter: e.name, victim: victim.name, headshot: !!hit.headshot, at: now });
+        playDeath(distVictim);
         // win check
         if (e.kills >= MATCH.killTarget) {
           state.finished = true; state.winnerId = e.id;
