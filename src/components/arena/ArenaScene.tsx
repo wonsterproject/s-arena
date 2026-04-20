@@ -114,42 +114,180 @@ export function ArenaScene({ state, selfId, ads }: Props) {
     const pad3 = new THREE.Mesh(padGeo, padMat2); pad3.rotation.x = -Math.PI / 2; pad3.position.set( 22, 0.03,  22); scene.add(pad3);
     const pad4 = new THREE.Mesh(padGeo, padMat2); pad4.rotation.x = -Math.PI / 2; pad4.position.set( 22, 0.03, -22); scene.add(pad4);
 
-    // Character builder: simple capsule body + head + gun
-    const characters = new Map<string, {
+    // ---------------------------------------------------------------
+    // Military humanoid character: head + helmet + torso (vest) + arms
+    // (upper+forearm) + legs (thigh+shin) + boots + rifle in hands.
+    // Limbs are pivoted groups so we can animate swing while moving.
+    // ---------------------------------------------------------------
+    type CharRig = {
       group: THREE.Group;
-      body: THREE.Mesh;
+      torso: THREE.Group;
       head: THREE.Mesh;
-      gun: THREE.Mesh;
+      leftArm: THREE.Group;   // shoulder pivot
+      rightArm: THREE.Group;  // shoulder pivot (holds rifle)
+      leftLeg: THREE.Group;   // hip pivot
+      rightLeg: THREE.Group;  // hip pivot
+      gun: THREE.Group;
       muzzle: THREE.Object3D;
-      hpBar: THREE.Sprite;
       hpFill: THREE.Mesh;
-    }>();
+      hpBg: THREE.Mesh;
+    };
+    const characters = new Map<string, CharRig>();
 
-    function makeChar(color: number) {
+    function makeChar(teamColor: number): CharRig {
       const grp = new THREE.Group();
-      const bodyMat = new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.25 });
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 18, 14), new THREE.MeshStandardMaterial({ color: 0xf3d8b6, roughness: 0.6 }));
-      head.position.y = 1.7; head.castShadow = true;
-      const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.35, 0.9, 6, 12), bodyMat);
-      body.position.y = 1.0; body.castShadow = true;
-      const gun = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.18, 0.9), new THREE.MeshStandardMaterial({ color: 0x161b26, metalness: 0.7, roughness: 0.4 }));
-      gun.position.set(0.28, 1.3, 0.55);
-      gun.castShadow = true;
-      const muzzle = new THREE.Object3D();
-      muzzle.position.set(0.28, 1.3, 1.05);
-      grp.add(head, body, gun, muzzle);
 
-      // HP bar (canvas sprite kept simple via plane)
-      const hpBg = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.08),
+      // Materials — military fatigues + gear
+      const fatigueColor = teamColor === 0x22d3ee
+        ? new THREE.Color(0x3b5132)  // olive drab for ally
+        : new THREE.Color(0x4a3a26); // desert tan for enemy
+      const fatigueMat = new THREE.MeshStandardMaterial({ color: fatigueColor, roughness: 0.85, metalness: 0.05 });
+      const vestMat   = new THREE.MeshStandardMaterial({ color: 0x2a2f24, roughness: 0.7, metalness: 0.15 });
+      const helmetMat = new THREE.MeshStandardMaterial({ color: 0x2f3a26, roughness: 0.55, metalness: 0.25 });
+      const skinMat   = new THREE.MeshStandardMaterial({ color: 0xd9b18a, roughness: 0.65 });
+      const bootMat   = new THREE.MeshStandardMaterial({ color: 0x141414, roughness: 0.6, metalness: 0.2 });
+      const gloveMat  = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.7 });
+      const teamMat   = new THREE.MeshBasicMaterial({ color: teamColor });
+      const gunBodyMat = new THREE.MeshStandardMaterial({ color: 0x1a1d22, roughness: 0.4, metalness: 0.7 });
+      const gunGripMat = new THREE.MeshStandardMaterial({ color: 0x0f0f0f, roughness: 0.6, metalness: 0.3 });
+
+      // Torso (vest over fatigues)
+      const torso = new THREE.Group();
+      torso.position.y = 1.05;
+      const torsoBody = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.7, 0.34), fatigueMat);
+      torsoBody.castShadow = true;
+      const vest = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.55, 0.38), vestMat);
+      vest.position.y = 0.05;
+      vest.castShadow = true;
+      // Pouches on vest
+      const pouch1 = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.14, 0.08), vestMat);
+      pouch1.position.set(-0.14, -0.05, 0.21);
+      const pouch2 = pouch1.clone(); pouch2.position.x = 0.14;
+      // Team armband
+      const band = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.18, 0.36), teamMat);
+      band.position.set(-0.32, 0.05, 0);
+      torso.add(torsoBody, vest, pouch1, pouch2, band);
+
+      // Head + helmet
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 18, 14), skinMat);
+      head.position.y = 1.62;
+      head.castShadow = true;
+      const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.19, 18, 12, 0, Math.PI * 2, 0, Math.PI / 1.7), helmetMat);
+      helmet.position.y = 1.66;
+      helmet.castShadow = true;
+      const helmetRim = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.025, 8, 24), helmetMat);
+      helmetRim.rotation.x = Math.PI / 2;
+      helmetRim.position.y = 1.6;
+
+      // Arms — shoulder pivot groups so we can rotate forearm too
+      const upperArmGeo = new THREE.CapsuleGeometry(0.08, 0.32, 4, 8);
+      const forearmGeo  = new THREE.CapsuleGeometry(0.075, 0.3, 4, 8);
+      const handGeo     = new THREE.SphereGeometry(0.085, 10, 8);
+
+      const makeArm = (side: -1 | 1) => {
+        const shoulder = new THREE.Group();
+        shoulder.position.set(0.32 * side, 1.38, 0);
+        const upper = new THREE.Mesh(upperArmGeo, fatigueMat);
+        upper.position.y = -0.18;
+        upper.castShadow = true;
+        const elbow = new THREE.Group();
+        elbow.position.y = -0.36;
+        const fore = new THREE.Mesh(forearmGeo, fatigueMat);
+        fore.position.y = -0.16;
+        fore.castShadow = true;
+        const hand = new THREE.Mesh(handGeo, gloveMat);
+        hand.position.y = -0.34;
+        elbow.add(fore, hand);
+        shoulder.add(upper, elbow);
+        return shoulder;
+      };
+      const leftArm = makeArm(-1);
+      const rightArm = makeArm(1);
+
+      // Legs — hip pivot groups with knee
+      const thighGeo = new THREE.CapsuleGeometry(0.105, 0.42, 4, 8);
+      const shinGeo  = new THREE.CapsuleGeometry(0.095, 0.4, 4, 8);
+      const bootGeo  = new THREE.BoxGeometry(0.18, 0.1, 0.28);
+
+      const makeLeg = (side: -1 | 1) => {
+        const hip = new THREE.Group();
+        hip.position.set(0.13 * side, 0.92, 0);
+        const thigh = new THREE.Mesh(thighGeo, fatigueMat);
+        thigh.position.y = -0.22;
+        thigh.castShadow = true;
+        const knee = new THREE.Group();
+        knee.position.y = -0.46;
+        const shin = new THREE.Mesh(shinGeo, fatigueMat);
+        shin.position.y = -0.22;
+        shin.castShadow = true;
+        const boot = new THREE.Mesh(bootGeo, bootMat);
+        boot.position.set(0, -0.45, 0.05);
+        boot.castShadow = true;
+        knee.add(shin, boot);
+        hip.add(thigh, knee);
+        return hip;
+      };
+      const leftLeg = makeLeg(-1);
+      const rightLeg = makeLeg(1);
+
+      // Rifle — assembled from primitives, parented to right arm so it follows hand
+      const gun = new THREE.Group();
+      // Body / receiver
+      const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.55), gunBodyMat);
+      receiver.castShadow = true;
+      // Barrel
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.45, 10), gunBodyMat);
+      barrel.rotation.x = Math.PI / 2;
+      barrel.position.z = 0.5;
+      // Foregrip / handguard
+      const handguard = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.09, 0.32), gunBodyMat);
+      handguard.position.z = 0.34;
+      // Magazine
+      const mag = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.18, 0.1), gunBodyMat);
+      mag.position.set(0, -0.13, 0.05);
+      // Pistol grip
+      const grip = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.16, 0.07), gunGripMat);
+      grip.position.set(0, -0.12, -0.12);
+      grip.rotation.x = -0.25;
+      // Stock
+      const stock = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.1, 0.28), gunGripMat);
+      stock.position.z = -0.32;
+      // Sight
+      const sight = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 0.1), gunGripMat);
+      sight.position.set(0, 0.09, 0.05);
+      gun.add(receiver, barrel, handguard, mag, grip, stock, sight);
+      // Position rifle in front of right hand area
+      gun.position.set(-0.18, -0.36, 0.18);
+      gun.rotation.y = -0.15;
+      rightArm.add(gun);
+      const muzzle = new THREE.Object3D();
+      muzzle.position.set(0, 0, 0.74);
+      gun.add(muzzle);
+
+      // Left hand reaches across to support handguard
+      // Move left forearm forward so hand sits on the rifle
+      const leftElbow = leftArm.children[1] as THREE.Group;
+      leftElbow.rotation.x = -1.1;
+      leftArm.rotation.x = -0.5;
+      leftArm.rotation.z = 0.35;
+
+      // Right arm posed bringing rifle up
+      rightArm.rotation.x = -0.55;
+      rightArm.rotation.z = -0.18;
+      const rightElbow = rightArm.children[1] as THREE.Group;
+      rightElbow.rotation.x = -0.5;
+
+      // HP bar
+      const hpBg = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.08),
         new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.55 }));
-      hpBg.position.y = 2.15;
-      const hpFill = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.06),
+      hpBg.position.y = 2.05;
+      const hpFill = new THREE.Mesh(new THREE.PlaneGeometry(0.88, 0.06),
         new THREE.MeshBasicMaterial({ color: 0x4ade80 }));
-      hpFill.position.set(0, 2.15, 0.001);
-      grp.add(hpBg, hpFill);
-      // billboard via update()
-      const hpBar = new THREE.Sprite(); // unused but kept for interface
-      return { group: grp, body, head, gun, muzzle, hpBar, hpFill };
+      hpFill.position.set(0, 2.05, 0.001);
+
+      grp.add(torso, head, helmet, helmetRim, leftArm, rightArm, leftLeg, rightLeg, hpBg, hpFill);
+
+      return { group: grp, torso, head, leftArm, rightArm, leftLeg, rightLeg, gun, muzzle, hpFill, hpBg };
     }
 
     for (const e of stateRef.current.entities) {
