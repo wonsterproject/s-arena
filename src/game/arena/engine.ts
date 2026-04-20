@@ -1,6 +1,7 @@
 import { MATCH, PLAYER, SPAWNS_A, SPAWNS_B, WEAPON } from "./constants";
 import type { Entity, KillFeedItem, MuzzleFlash, Tracer, Vec3 } from "./types";
 import { addScaled, clampToArena, dirFromYawPitch, raycast, resolveCovers } from "./physics";
+import { playDeath, playFootstep, playGunshot, playHit, playJump, playReload } from "./sounds";
 
 let _id = 1;
 const nid = () => _id++;
@@ -19,6 +20,7 @@ export function makeEntity(opts: Partial<Entity> & { id: string; name: string; i
     reloading: false, reloadEnd: 0, lastShotAt: 0,
     recoil: 0, spread: WEAPON.spreadHip,
     kills: 0, deaths: 0, respawnAt: 0,
+    crouch: false, animPhase: 0, fireFlashAt: 0,
   };
 }
 
@@ -34,6 +36,7 @@ export interface MoveInput {
   right: number;   // -1..1
   jump: boolean;
   sprint: boolean;
+  crouch?: boolean;
   desiredYaw: number;
   desiredPitch: number;
 }
