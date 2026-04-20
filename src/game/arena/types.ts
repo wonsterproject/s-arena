@@ -22,6 +22,9 @@ export interface Entity {
   kills: number;
   deaths: number;
   respawnAt: number;    // ms timestamp; 0 if alive
+  crouch: boolean;      // crouch state
+  animPhase: number;    // 0..2π — drives leg/arm swing while moving
+  fireFlashAt: number;  // ms timestamp of last shot (for muzzle/recoil anim)
 }
 
 export interface HitEvent {

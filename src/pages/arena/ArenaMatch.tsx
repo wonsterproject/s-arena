@@ -24,7 +24,7 @@ export default function ArenaMatch() {
   const stateRef = useRef<ArenaState>(makeMatch(profile?.username ?? "You", `BOT-${diff.toUpperCase()}`));
   const adsRef = useRef(false);
   const ctrlRef = useRef<TouchControlState>({
-    moveX: 0, moveZ: 0, lookDX: 0, lookDY: 0, fire: false, ads: false, jump: false, reload: false, sprint: false,
+    moveX: 0, moveZ: 0, lookDX: 0, lookDY: 0, fire: false, ads: false, jump: false, reload: false, sprint: false, crouch: false,
   });
   const keysRef = useRef<Record<string, boolean>>({});
   const mouseLockedRef = useRef(false);
@@ -35,7 +35,11 @@ export default function ArenaMatch() {
 
   // Desktop input
   useEffect(() => {
-    const onKD = (e: KeyboardEvent) => { keysRef.current[e.code] = true; if (e.code === "KeyR") ctrlRef.current.reload = true; };
+    const onKD = (e: KeyboardEvent) => {
+      keysRef.current[e.code] = true;
+      if (e.code === "KeyR") ctrlRef.current.reload = true;
+      if (e.code === "KeyC") ctrlRef.current.crouch = !ctrlRef.current.crouch;
+    };
     const onKU = (e: KeyboardEvent) => { keysRef.current[e.code] = false; };
     const onMM = (e: MouseEvent) => {
       if (!mouseLockedRef.current) return;
@@ -112,7 +116,7 @@ export default function ArenaMatch() {
       c.jump = false;
 
       if (self.alive) {
-        stepEntityMovement(self, { forward, right, jump, sprint, desiredYaw, desiredPitch }, dt);
+        stepEntityMovement(self, { forward, right, jump, sprint, crouch: c.crouch, desiredYaw, desiredPitch }, dt);
         applyReloadInput(self, { fire, ads, reload: wantReload }, now);
         if (fire) fireWeapon(self, ads, st, now, (victim, dmg, head) => {
           if (head || dmg > 0) hitMarkerRef.current = now;
@@ -181,6 +185,8 @@ export default function ArenaMatch() {
   }, [diff, profile, refreshProfile]);
 
   const requestPointerLock = () => {
+    // Unlock audio on first user gesture
+    void import("@/game/arena/sounds").then(m => m.unlockAudio());
     const el = document.body;
     if (!isMobile && document.pointerLockElement !== el) el.requestPointerLock?.();
   };

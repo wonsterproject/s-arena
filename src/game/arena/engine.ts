@@ -1,6 +1,7 @@
 import { MATCH, PLAYER, SPAWNS_A, SPAWNS_B, WEAPON } from "./constants";
 import type { Entity, KillFeedItem, MuzzleFlash, Tracer, Vec3 } from "./types";
 import { addScaled, clampToArena, dirFromYawPitch, raycast, resolveCovers } from "./physics";
+import { playDeath, playFootstep, playGunshot, playHit, playJump, playReload } from "./sounds";
 
 let _id = 1;
 const nid = () => _id++;
@@ -19,6 +20,7 @@ export function makeEntity(opts: Partial<Entity> & { id: string; name: string; i
     reloading: false, reloadEnd: 0, lastShotAt: 0,
     recoil: 0, spread: WEAPON.spreadHip,
     kills: 0, deaths: 0, respawnAt: 0,
+    crouch: false, animPhase: 0, fireFlashAt: 0,
   };
 }
 
@@ -34,6 +36,7 @@ export interface MoveInput {
   right: number;   // -1..1
   jump: boolean;
   sprint: boolean;
+  crouch?: boolean;
   desiredYaw: number;
   desiredPitch: number;
 }
@@ -82,6 +85,7 @@ export function respawn(e: Entity, state: ArenaState) {
   e.hp = e.maxHp; e.alive = true;
   e.ammo = WEAPON.mag; e.reserve = WEAPON.reserve;
   e.reloading = false; e.recoil = 0; e.respawnAt = 0;
+  e.crouch = false; e.animPhase = 0; e.fireFlashAt = 0;
   // face center
   e.yaw = Math.atan2(0 - e.pos.x, 0 - e.pos.z);
   e.pitch = 0;
@@ -91,6 +95,7 @@ function startReload(e: Entity, now: number) {
   if (e.reloading || e.ammo === WEAPON.mag || e.reserve === 0) return;
   e.reloading = true;
   e.reloadEnd = now + WEAPON.reloadMs;
+  if (!e.isBot) playReload();
 }
 
 function finishReload(e: Entity) {
@@ -107,6 +112,7 @@ export function fireWeapon(e: Entity, ads: boolean, state: ArenaState, now: numb
   if (now - e.lastShotAt < interval) return false;
   e.lastShotAt = now;
   e.ammo -= 1;
+  e.fireFlashAt = now;
 
   const baseSpread = ads ? WEAPON.spreadAds : WEAPON.spreadHip;
   const moving = Math.hypot(e.vel.x, e.vel.z) > 1.5 ? WEAPON.spreadMove : 0;
@@ -138,6 +144,11 @@ export function fireWeapon(e: Entity, ads: boolean, state: ArenaState, now: numb
   e.spread = Math.min(0.18, e.spread + WEAPON.bloomPerShot);
   e.pitch = Math.max(-0.9, Math.min(0.9, e.pitch + WEAPON.recoilPerShot * 0.06));
 
+  // distance from local player (p1) for SFX falloff
+  const self = state.entities.find(x => !x.isBot);
+  const distToSelf = self ? Math.hypot(self.pos.x - e.pos.x, self.pos.z - e.pos.z) : 0;
+  playGunshot(distToSelf);
+
   if (hit.victimId) {
     const victim = state.entities.find(x => x.id === hit.victimId);
     if (victim && victim.alive) {
@@ -145,11 +156,14 @@ export function fireWeapon(e: Entity, ads: boolean, state: ArenaState, now: numb
       victim.hp -= dmg;
       state.lastDamage = { victimId: victim.id, from: { ...e.pos }, at: now };
       onHit?.(victim, dmg, !!hit.headshot);
+      const distVictim = self ? Math.hypot(self.pos.x - victim.pos.x, self.pos.z - victim.pos.z) : 0;
+      playHit(distVictim);
       if (victim.hp <= 0) {
         victim.hp = 0; victim.alive = false; victim.deaths += 1;
         e.kills += 1;
         victim.respawnAt = now + MATCH.respawnMs;
         state.killFeed.push({ id: nid(), shooter: e.name, victim: victim.name, headshot: !!hit.headshot, at: now });
+        playDeath(distVictim);
         // win check
         if (e.kills >= MATCH.killTarget) {
           state.finished = true; state.winnerId = e.id;
@@ -161,41 +175,42 @@ export function fireWeapon(e: Entity, ads: boolean, state: ArenaState, now: numb
 }
 
 export function stepEntityMovement(e: Entity, input: MoveInput, dt: number) {
+  // Crouch toggle (crouch overrides sprint)
+  e.crouch = !!input.crouch;
+
   // Yaw smoothing
   const dy = input.desiredYaw - e.yaw;
   const wrapped = Math.atan2(Math.sin(dy), Math.cos(dy));
   e.yaw += wrapped * Math.min(1, dt * PLAYER.rotSpeed);
   e.pitch = Math.max(-0.9, Math.min(0.9, input.desiredPitch));
 
-  // Local input → world direction relative to yaw
-  // Convention: yaw=0 faces +Z. Camera sits behind on -Z looking toward +Z.
-  // From the on-screen viewpoint, world +X appears on the LEFT, so screen-right strafe = world -X.
-  const speed = input.sprint ? PLAYER.sprintSpeed : PLAYER.walkSpeed;
+  // Speed: crouch slows by 50%, sprint boosts (no sprint while crouched)
+  const baseSpeed = e.crouch
+    ? PLAYER.walkSpeed * 0.5
+    : (input.sprint ? PLAYER.sprintSpeed : PLAYER.walkSpeed);
   const f = input.forward, r = input.right;
   const len = Math.hypot(f, r) || 1;
   const nf = f / Math.max(1, len);
   const nr = r / Math.max(1, len);
-  // forward axis (world) = (sin(yaw), cos(yaw)); right-on-screen axis (world) = (-cos(yaw), sin(yaw))
   const wx = Math.sin(e.yaw) * nf - Math.cos(e.yaw) * nr;
   const wz = Math.cos(e.yaw) * nf + Math.sin(e.yaw) * nr;
 
-  const targetVx = wx * speed;
-  const targetVz = wz * speed;
+  const targetVx = wx * baseSpeed;
+  const targetVz = wz * baseSpeed;
 
-  // Accel
   e.vel.x += (targetVx - e.vel.x) * Math.min(1, dt * PLAYER.accel * 0.5);
   e.vel.z += (targetVz - e.vel.z) * Math.min(1, dt * PLAYER.accel * 0.5);
-  // Friction when no input
   if (Math.hypot(f, r) < 0.05) {
     const damp = Math.max(0, 1 - PLAYER.friction * dt);
     e.vel.x *= damp; e.vel.z *= damp;
   }
 
-  // Jump
-  if (input.jump && Math.abs(e.pos.y) < 0.01 && e.vel.y <= 0.01) {
+  // Jump (cannot jump while crouched)
+  const grounded = Math.abs(e.pos.y) < 0.01 && e.vel.y <= 0.01;
+  if (input.jump && grounded && !e.crouch) {
     e.vel.y = PLAYER.jumpVel;
+    if (!e.isBot) playJump();
   }
-  // Gravity
   e.vel.y += PLAYER.gravity * dt;
 
   e.pos.x += e.vel.x * dt;
@@ -206,6 +221,20 @@ export function stepEntityMovement(e: Entity, input: MoveInput, dt: number) {
 
   clampToArena(e.pos);
   resolveCovers(e.pos);
+
+  // Animation phase + footstep cadence
+  const horizSpeed = Math.hypot(e.vel.x, e.vel.z);
+  if (horizSpeed > 0.4 && grounded) {
+    const cadence = (e.crouch ? 4.0 : (input.sprint ? 9.5 : 7.0));
+    const prev = e.animPhase;
+    e.animPhase = (e.animPhase + cadence * dt) % (Math.PI * 2);
+    // footstep when crossing 0 or π
+    const crossed = (Math.floor(prev / Math.PI) !== Math.floor(e.animPhase / Math.PI));
+    if (crossed && !e.isBot) playFootstep();
+  } else {
+    // ease back toward neutral
+    e.animPhase = e.animPhase * Math.max(0, 1 - 6 * dt);
+  }
 }
 
 export function decayWeapon(e: Entity, dt: number, now: number) {
