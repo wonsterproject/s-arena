@@ -1,14 +1,17 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Bot, Cpu, Swords, Target } from "lucide-react";
+import { ArrowLeft, Bot, Cpu, Swords, Target, Coins } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import FriendsInvitePanel from "@/components/lobby/FriendsInvitePanel";
 import OnlineMatchPanel from "@/components/lobby/OnlineMatchPanel";
+import BotBetDialog from "@/components/lobby/BotBetDialog";
 
 export default function ArenaLobby() {
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const [betDialog, setBetDialog] = useState<"medium" | "hard" | null>(null);
 
-  const startBot = (diff: "easy" | "medium" | "hard") => navigate(`/arena/play?mode=bot&diff=${diff}`);
+  const startEasy = () => navigate(`/arena/play?mode=bot&diff=easy`);
 
   return (
     <main className="min-h-screen px-4 py-6">
@@ -31,9 +34,9 @@ export default function ArenaLobby() {
           <div>
             <h2 className="text-xs uppercase tracking-widest text-muted-foreground mb-3">Play vs Bot</h2>
             <div className="grid sm:grid-cols-3 gap-3">
-              <ModeBtn icon={<Bot className="h-5 w-5" />} title="Easy" desc="Slow react · wide aim" onClick={() => startBot("easy")} />
-              <ModeBtn icon={<Cpu className="h-5 w-5" />} title="Medium" desc="Balanced · burst fire" onClick={() => startBot("medium")} />
-              <ModeBtn icon={<Swords className="h-5 w-5" />} title="Hard" desc="Sharp · sustained fire" onClick={() => startBot("hard")} />
+              <ModeBtn icon={<Bot className="h-5 w-5" />} title="Easy" desc="Free · Practice mode" onClick={startEasy} />
+              <ModeBtn icon={<Cpu className="h-5 w-5" />} title="Medium" desc="Bet · Win 2× coins" badge onClick={() => setBetDialog("medium")} />
+              <ModeBtn icon={<Swords className="h-5 w-5" />} title="Hard" desc="Bet · Win 2× coins" badge onClick={() => setBetDialog("hard")} />
             </div>
           </div>
 
@@ -42,7 +45,7 @@ export default function ArenaLobby() {
           <FriendsInvitePanel game="arena" gameLabel="Arena" />
 
           <div className="glass rounded-2xl p-4 text-sm text-muted-foreground">
-            🪙 Balance: <span className="font-bold text-yellow-400">{profile?.coins ?? 0}</span> coins · Win a match to earn 50 coins · Min bet 50
+            🪙 Balance: <span className="font-bold text-yellow-400">{profile?.coins ?? 0}</span> coins · Min bet 50 · Winner takes 2×
           </div>
 
           <div className="glass rounded-2xl p-4 text-sm">
@@ -55,13 +58,30 @@ export default function ArenaLobby() {
           </div>
         </section>
       </div>
+
+      <BotBetDialog
+        open={betDialog !== null}
+        onClose={() => setBetDialog(null)}
+        game="arena"
+        difficulty={betDialog ?? "medium"}
+        onCreated={(matchId) => {
+          const diff = betDialog ?? "medium";
+          setBetDialog(null);
+          navigate(`/arena/play?mode=bot&diff=${diff}&id=${matchId}`);
+        }}
+      />
     </main>
   );
 }
 
-function ModeBtn({ icon, title, desc, onClick }: { icon: React.ReactNode; title: string; desc: string; onClick: () => void }) {
+function ModeBtn({ icon, title, desc, onClick, badge }: { icon: React.ReactNode; title: string; desc: string; onClick: () => void; badge?: boolean }) {
   return (
-    <button onClick={onClick} className="glass-btn group flex items-center gap-3 p-4 text-left hover:scale-[1.02] transition-transform">
+    <button onClick={onClick} className="glass-btn group flex items-center gap-3 p-4 text-left hover:scale-[1.02] transition-transform relative">
+      {badge && (
+        <span className="absolute -top-1 -right-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-500/30 text-yellow-300 border border-yellow-500/50 flex items-center gap-1">
+          <Coins className="h-2.5 w-2.5" /> BET
+        </span>
+      )}
       <div className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary">{icon}</div>
       <div className="flex-1">
         <div className="font-bold">{title}</div>
