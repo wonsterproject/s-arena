@@ -50,6 +50,8 @@ export default function CarromMatch() {
   const [loadingOnline, setLoadingOnline] = useState(mode === "online");
   const finalizingRef = useRef(false);
   const skipNextPushRef = useRef(false);
+  const [paidBotBet, setPaidBotBet] = useState<number>(0);
+  const paidBotFinalizedRef = useRef(false);
 
   // ===== ONLINE: load + subscribe =====
   useEffect(() => {
