@@ -52,6 +52,18 @@ export default function ArenaMatch() {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastBroadcastRef = useRef(0);
   const finalizingRef = useRef(false);
+  const [paidBotBet, setPaidBotBet] = useState<number>(0);
+  const paidBotFinalizedRef = useRef(false);
+
+  // Load paid bot match bet
+  useEffect(() => {
+    if (mode !== "bot" || !onlineMatchId || !user) return;
+    void (async () => {
+      const { data: m } = await supabase.from("matches")
+        .select("bet_amount, host_id, status").eq("id", onlineMatchId).maybeSingle();
+      if (m && m.host_id === user.id && m.status !== "finished") setPaidBotBet(m.bet_amount ?? 0);
+    })();
+  }, [mode, onlineMatchId, user]);
 
   // ===== ONLINE init =====
   useEffect(() => {
@@ -280,6 +292,16 @@ export default function ArenaMatch() {
               .then(() => refreshProfile());
           }
           setEndResult({ won, coins: won ? online.betAmount * 2 : 0 });
+        } else if (mode === "bot" && paidBotBet > 0 && onlineMatchId && !paidBotFinalizedRef.current) {
+          // Paid bot match: finalize via RPC (server awards 2x to human if won)
+          paidBotFinalizedRef.current = true;
+          (async () => {
+            await supabase.rpc("finalize_match", {
+              _match_id: onlineMatchId, _winner_id: won ? user!.id : null,
+            });
+            await refreshProfile();
+          })();
+          setEndResult({ won, coins: won ? paidBotBet * 2 : 0 });
         } else {
           const reward = won ? 50 : 0;
           if (won && profile) {

@@ -213,6 +213,10 @@ export default function CarromMatch() {
           }
         }
       }
+      // Paid bot finalize (human is side 0)
+      if (mode === "bot" && updated.winner !== null && paidBotBet > 0) {
+        void finalizePaidBot(updated.winner === 0);
+      }
       skipNextPushRef.current = false;
       return updated;
     });
