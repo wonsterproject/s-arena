@@ -457,11 +457,16 @@ export default function PoolMatch() {
             {mode === "online" && online && online.betAmount > 0 && (
               <p className="text-sm text-amber-300 mb-2">Pot: {online.betAmount * 2} coins</p>
             )}
-            <button onClick={mode === "online" ? () => navigate("/pool/lobby") : restart}
+            {mode === "bot" && paidBotBet > 0 && (
+              <p className="text-sm text-amber-300 mb-2">
+                {match.winner === 0 ? `🎉 You won ${paidBotBet * 2} coins!` : `Lost ${paidBotBet} coins`}
+              </p>
+            )}
+            <button onClick={(mode === "online" || (mode === "bot" && paidBotBet > 0)) ? () => navigate("/pool/lobby") : restart}
               className="mt-3 h-11 px-7 rounded-2xl font-black text-white"
               style={{ background: "linear-gradient(180deg, hsl(28 100% 60%), hsl(20 100% 45%))",
                        boxShadow: "0 0 0 2px hsl(45 100% 60% / 0.5) inset, 0 4px 12px rgba(0,0,0,0.5)" }}>
-              {mode === "online" ? "Back to Lobby" : "Play Again"}
+              {(mode === "online" || (mode === "bot" && paidBotBet > 0)) ? "Back to Lobby" : "Play Again"}
             </button>
           </div>
         )}
