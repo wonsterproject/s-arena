@@ -327,7 +327,7 @@ export default function ArenaMatch() {
     };
     tick();
     return () => cancelAnimationFrame(raf);
-  }, [diff, profile, refreshProfile, mode, online, user]);
+  }, [diff, profile, refreshProfile, mode, online, user, paidBotBet, onlineMatchId]);
 
   const requestPointerLock = () => {
     void import("@/game/arena/sounds").then(m => m.unlockAudio());
