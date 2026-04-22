@@ -413,6 +413,15 @@ export default function PoolMatch() {
           </div>
         )}
 
+        {mode === "bot" && paidBotBet > 0 && (
+          <div className="flex items-center justify-center gap-2 px-3 py-1 mt-1 rounded-xl text-xs bg-yellow-500/10 border border-yellow-500/30">
+            <Coins className="h-3 w-3 text-yellow-400" />
+            <span className="font-bold text-yellow-300">Bet: {paidBotBet}</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="font-bold text-yellow-400">Win 2× = {paidBotBet * 2}</span>
+          </div>
+        )}
+
         <div className="mt-1 flex items-center justify-center gap-2 sm:gap-3">
           <PoolScene
             ref={sceneRef}
