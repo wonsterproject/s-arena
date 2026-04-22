@@ -114,6 +114,10 @@ export default function PoolMatch() {
   const finalizingRef = useRef(false);
   const skipNextPushRef = useRef(false);
 
+  // Paid bot match support: lock-in bet so winner gets 2x via finalize_match
+  const [paidBotBet, setPaidBotBet] = useState<number>(0);
+  const paidBotFinalizedRef = useRef(false);
+
   const [tableSize, setTableSize] = useState({ w: 800, h: 400 });
   useEffect(() => {
     const recalc = () => {
