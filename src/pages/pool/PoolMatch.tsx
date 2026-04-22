@@ -289,6 +289,10 @@ export default function PoolMatch() {
               }
             }
           }
+          // Paid bot match finalize (human is always side 0)
+          if (mode === "bot" && resolved.winner !== null && paidBotBet > 0) {
+            void finalizePaidBot(resolved.winner === 0);
+          }
           return resolved;
         });
         setShooting(false);
