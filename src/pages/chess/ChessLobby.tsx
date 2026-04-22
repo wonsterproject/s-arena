@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Bot, Users, Swords, ArrowLeft, Cpu, Crown } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import FriendsInvitePanel from "@/components/lobby/FriendsInvitePanel";
+import OnlineMatchPanel from "@/components/lobby/OnlineMatchPanel";
 
 export default function ChessLobby() {
   const navigate = useNavigate();
@@ -47,6 +48,8 @@ export default function ChessLobby() {
             <h2 className="text-xs uppercase tracking-widest text-muted-foreground mb-3">Local 2 Player</h2>
             <ModeBtn icon={<Users className="h-5 w-5" />} title="Pass & Play" desc="Same device, two players" onClick={startLocal} />
           </div>
+
+          <OnlineMatchPanel game="chess" gameLabel="Chess" />
 
           <FriendsInvitePanel game="chess" gameLabel="Chess" />
 

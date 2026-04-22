@@ -290,19 +290,25 @@ export type Database = {
       }
       matchmaking_queue: {
         Row: {
+          bet_amount: number
           created_at: string
+          game_type: Database["public"]["Enums"]["game_type"]
           id: string
           mode: Database["public"]["Enums"]["match_mode"]
           user_id: string
         }
         Insert: {
+          bet_amount?: number
           created_at?: string
+          game_type?: Database["public"]["Enums"]["game_type"]
           id?: string
           mode: Database["public"]["Enums"]["match_mode"]
           user_id: string
         }
         Update: {
+          bet_amount?: number
           created_at?: string
+          game_type?: Database["public"]["Enums"]["game_type"]
           id?: string
           mode?: Database["public"]["Enums"]["match_mode"]
           user_id?: string
@@ -591,6 +597,14 @@ export type Database = {
       is_match_participant: {
         Args: { _match_id: string; _user: string }
         Returns: boolean
+      }
+      join_or_create_game_match: {
+        Args: {
+          _bet?: number
+          _game: Database["public"]["Enums"]["game_type"]
+          _mode: Database["public"]["Enums"]["match_mode"]
+        }
+        Returns: string
       }
       join_or_create_match: {
         Args: { _mode: Database["public"]["Enums"]["match_mode"] }

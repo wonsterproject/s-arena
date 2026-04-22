@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Bot, Cpu, Swords, Target } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import FriendsInvitePanel from "@/components/lobby/FriendsInvitePanel";
+import OnlineMatchPanel from "@/components/lobby/OnlineMatchPanel";
 
 export default function ArenaLobby() {
   const navigate = useNavigate();
@@ -35,6 +36,8 @@ export default function ArenaLobby() {
               <ModeBtn icon={<Swords className="h-5 w-5" />} title="Hard" desc="Sharp · sustained fire" onClick={() => startBot("hard")} />
             </div>
           </div>
+
+          <OnlineMatchPanel game="arena" gameLabel="Arena" />
 
           <FriendsInvitePanel game="arena" gameLabel="Arena" />
 
