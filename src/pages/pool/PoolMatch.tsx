@@ -200,6 +200,32 @@ export default function PoolMatch() {
       .eq("id", onlineMatchId);
   }, [mode, onlineMatchId]);
 
+  // Paid bot match: load bet amount from match record
+  useEffect(() => {
+    if (mode !== "bot" || !onlineMatchId || !user) return;
+    if (onlineMatchId.startsWith("local-")) return;
+    void (async () => {
+      const { data: m } = await supabase.from("matches")
+        .select("bet_amount, host_id, status").eq("id", onlineMatchId).maybeSingle();
+      if (m && m.host_id === user.id && m.status !== "finished") {
+        setPaidBotBet(m.bet_amount ?? 0);
+      }
+    })();
+  }, [mode, onlineMatchId, user]);
+
+  // Finalize paid bot match when it ends
+  const finalizePaidBot = useCallback(async (humanWon: boolean) => {
+    if (paidBotFinalizedRef.current) return;
+    if (mode !== "bot" || !onlineMatchId || !user || paidBotBet <= 0) return;
+    if (onlineMatchId.startsWith("local-")) return;
+    paidBotFinalizedRef.current = true;
+    const { error } = await supabase.rpc("finalize_match", {
+      _match_id: onlineMatchId,
+      _winner_id: humanWon ? user.id : null,
+    });
+    if (!error) await refreshProfile();
+  }, [mode, onlineMatchId, user, paidBotBet, refreshProfile]);
+
   useEffect(() => {
     if (!shooting) setAnimBalls(match.balls.map(b => ({ ...b })));
   }, [match.balls, shooting]);
