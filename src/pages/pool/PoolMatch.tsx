@@ -114,6 +114,10 @@ export default function PoolMatch() {
   const finalizingRef = useRef(false);
   const skipNextPushRef = useRef(false);
 
+  // Paid bot match support: lock-in bet so winner gets 2x via finalize_match
+  const [paidBotBet, setPaidBotBet] = useState<number>(0);
+  const paidBotFinalizedRef = useRef(false);
+
   const [tableSize, setTableSize] = useState({ w: 800, h: 400 });
   useEffect(() => {
     const recalc = () => {
@@ -196,6 +200,32 @@ export default function PoolMatch() {
       .eq("id", onlineMatchId);
   }, [mode, onlineMatchId]);
 
+  // Paid bot match: load bet amount from match record
+  useEffect(() => {
+    if (mode !== "bot" || !onlineMatchId || !user) return;
+    if (onlineMatchId.startsWith("local-")) return;
+    void (async () => {
+      const { data: m } = await supabase.from("matches")
+        .select("bet_amount, host_id, status").eq("id", onlineMatchId).maybeSingle();
+      if (m && m.host_id === user.id && m.status !== "finished") {
+        setPaidBotBet(m.bet_amount ?? 0);
+      }
+    })();
+  }, [mode, onlineMatchId, user]);
+
+  // Finalize paid bot match when it ends
+  const finalizePaidBot = useCallback(async (humanWon: boolean) => {
+    if (paidBotFinalizedRef.current) return;
+    if (mode !== "bot" || !onlineMatchId || !user || paidBotBet <= 0) return;
+    if (onlineMatchId.startsWith("local-")) return;
+    paidBotFinalizedRef.current = true;
+    const { error } = await supabase.rpc("finalize_match", {
+      _match_id: onlineMatchId,
+      _winner_id: humanWon ? user.id : null,
+    });
+    if (!error) await refreshProfile();
+  }, [mode, onlineMatchId, user, paidBotBet, refreshProfile]);
+
   useEffect(() => {
     if (!shooting) setAnimBalls(match.balls.map(b => ({ ...b })));
   }, [match.balls, shooting]);
@@ -258,6 +288,10 @@ export default function PoolMatch() {
                   .then(() => refreshProfile());
               }
             }
+          }
+          // Paid bot match finalize (human is always side 0)
+          if (mode === "bot" && resolved.winner !== null && paidBotBet > 0) {
+            void finalizePaidBot(resolved.winner === 0);
           }
           return resolved;
         });
@@ -379,6 +413,15 @@ export default function PoolMatch() {
           </div>
         )}
 
+        {mode === "bot" && paidBotBet > 0 && (
+          <div className="flex items-center justify-center gap-2 px-3 py-1 mt-1 rounded-xl text-xs bg-yellow-500/10 border border-yellow-500/30">
+            <Coins className="h-3 w-3 text-yellow-400" />
+            <span className="font-bold text-yellow-300">Bet: {paidBotBet}</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="font-bold text-yellow-400">Win 2× = {paidBotBet * 2}</span>
+          </div>
+        )}
+
         <div className="mt-1 flex items-center justify-center gap-2 sm:gap-3">
           <PoolScene
             ref={sceneRef}
@@ -414,11 +457,16 @@ export default function PoolMatch() {
             {mode === "online" && online && online.betAmount > 0 && (
               <p className="text-sm text-amber-300 mb-2">Pot: {online.betAmount * 2} coins</p>
             )}
-            <button onClick={mode === "online" ? () => navigate("/pool/lobby") : restart}
+            {mode === "bot" && paidBotBet > 0 && (
+              <p className="text-sm text-amber-300 mb-2">
+                {match.winner === 0 ? `🎉 You won ${paidBotBet * 2} coins!` : `Lost ${paidBotBet} coins`}
+              </p>
+            )}
+            <button onClick={(mode === "online" || (mode === "bot" && paidBotBet > 0)) ? () => navigate("/pool/lobby") : restart}
               className="mt-3 h-11 px-7 rounded-2xl font-black text-white"
               style={{ background: "linear-gradient(180deg, hsl(28 100% 60%), hsl(20 100% 45%))",
                        boxShadow: "0 0 0 2px hsl(45 100% 60% / 0.5) inset, 0 4px 12px rgba(0,0,0,0.5)" }}>
-              {mode === "online" ? "Back to Lobby" : "Play Again"}
+              {(mode === "online" || (mode === "bot" && paidBotBet > 0)) ? "Back to Lobby" : "Play Again"}
             </button>
           </div>
         )}

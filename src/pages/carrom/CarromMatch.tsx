@@ -50,6 +50,8 @@ export default function CarromMatch() {
   const [loadingOnline, setLoadingOnline] = useState(mode === "online");
   const finalizingRef = useRef(false);
   const skipNextPushRef = useRef(false);
+  const [paidBotBet, setPaidBotBet] = useState<number>(0);
+  const paidBotFinalizedRef = useRef(false);
 
   // ===== ONLINE: load + subscribe =====
   useEffect(() => {
@@ -107,6 +109,27 @@ export default function CarromMatch() {
       .update({ state: next as any, updated_at: new Date().toISOString() })
       .eq("id", onlineMatchId);
   }, [mode, onlineMatchId]);
+
+  // Paid bot match: load bet
+  useEffect(() => {
+    if (mode !== "bot" || !onlineMatchId || !user) return;
+    if (onlineMatchId.startsWith("local-")) return;
+    void (async () => {
+      const { data: m } = await supabase.from("matches")
+        .select("bet_amount, host_id, status").eq("id", onlineMatchId).maybeSingle();
+      if (m && m.host_id === user.id && m.status !== "finished") setPaidBotBet(m.bet_amount ?? 0);
+    })();
+  }, [mode, onlineMatchId, user]);
+
+  const finalizePaidBot = useCallback(async (humanWon: boolean) => {
+    if (paidBotFinalizedRef.current || mode !== "bot" || !onlineMatchId || !user || paidBotBet <= 0) return;
+    if (onlineMatchId.startsWith("local-")) return;
+    paidBotFinalizedRef.current = true;
+    const { error } = await supabase.rpc("finalize_match", {
+      _match_id: onlineMatchId, _winner_id: humanWon ? user.id : null,
+    });
+    if (!error) await refreshProfile();
+  }, [mode, onlineMatchId, user, paidBotBet, refreshProfile]);
 
   useEffect(() => {
     if (!apiRef.current) return;
@@ -189,6 +212,10 @@ export default function CarromMatch() {
               .then(() => refreshProfile());
           }
         }
+      }
+      // Paid bot finalize (human is side 0)
+      if (mode === "bot" && updated.winner !== null && paidBotBet > 0) {
+        void finalizePaidBot(updated.winner === 0);
       }
       skipNextPushRef.current = false;
       return updated;

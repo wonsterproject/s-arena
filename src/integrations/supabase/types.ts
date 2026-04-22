@@ -583,6 +583,10 @@ export type Database = {
         Args: { _game: Database["public"]["Enums"]["game_type"] }
         Returns: string
       }
+      create_paid_bot_match: {
+        Args: { _bet: number; _game: Database["public"]["Enums"]["game_type"] }
+        Returns: string
+      }
       finalize_match: {
         Args: { _match_id: string; _winner_id: string }
         Returns: undefined
