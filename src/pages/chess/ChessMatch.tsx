@@ -159,7 +159,7 @@ export default function ChessMatch() {
       .eq("id", onlineMatchId);
   }, [mode, onlineMatchId]);
 
-  // Game over detection + finalize for online
+  // Game over detection + finalize for online and paid bot
   useEffect(() => {
     if (status === "checkmate") {
       const winnerColor: Color = state.turn === "w" ? "b" : "w";
@@ -174,11 +174,19 @@ export default function ChessMatch() {
             .then(() => refreshProfile());
         }
       }
+      // Paid bot finalize (human is white = playerColor)
+      if (mode === "bot" && paidBotBet > 0 && onlineMatchId && user && !paidBotFinalizedRef.current) {
+        paidBotFinalizedRef.current = true;
+        const humanWon = winnerColor === playerColor;
+        supabase.rpc("finalize_match", {
+          _match_id: onlineMatchId, _winner_id: humanWon ? user.id : null,
+        }).then(() => refreshProfile());
+      }
     } else if (status === "stalemate") setGameOver("Stalemate — Draw");
     else if (status === "draw-50") setGameOver("50-move rule — Draw");
     else if (status === "draw-3fold") setGameOver("Threefold repetition — Draw");
     else if (status === "draw-material") setGameOver("Insufficient material — Draw");
-  }, [status, state.turn, mode, online, user, refreshProfile]);
+  }, [status, state.turn, mode, online, user, refreshProfile, paidBotBet, onlineMatchId, playerColor]);
 
   // Bot move (bot mode only)
   const botRunRef = useRef(false);
