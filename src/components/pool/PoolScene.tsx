@@ -537,8 +537,16 @@ const PoolScene = forwardRef<PoolSceneApi, Props>(function PoolScene(
     const cue = balls.find(b => b.id === 0);
     if (!cue) return;
     if (ballInHand) {
-      setDraggingCue(true);
-      onPlaceCue(w.x, w.z);
+      // Decide: tapping near cue ball = pick it up to drag; otherwise = aim.
+      const dist = Math.hypot(w.x - cue.x, w.z - cue.z);
+      // Generous grab radius — 3x ball radius — so it's easy to grab on mobile.
+      if (dist < BALL.radius * 3) {
+        setDraggingCue(true);
+        onPlaceCue(w.x, w.z);
+        return;
+      }
+      // Otherwise treat as aim — cue ball already placed, user wants to shoot.
+      setAim({ dx: w.x - cue.x, dz: w.z - cue.z });
       return;
     }
     setAim({ dx: w.x - cue.x, dz: w.z - cue.z });

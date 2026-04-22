@@ -34,7 +34,7 @@ export const PHYS = {
   restThreshold: 0.02,
   maxSimSeconds: 12,
   dt: 1 / 120,            // sub-step
-  maxShotSpeed: 35,       // units/sec at full power (increased 25%)
+  maxShotSpeed: 52,       // units/sec at full power (boosted for stronger shots)
 };
 
 // Standard rack: cue ball on head spot (left), foot spot (right) for triangle apex.
