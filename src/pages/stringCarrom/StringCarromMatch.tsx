@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Trophy, Volume2, VolumeX, Wifi, Coins, Loader2 } from "lucide-react";
 import StringCarromScene, { type SCSceneApi } from "@/components/stringCarrom/StringCarromScene";
-import { createMatch, resolveShot } from "@/game/stringCarrom/rules";
-import { applySlingShot, simulate } from "@/game/stringCarrom/physics";
+import { createMatch, checkWinner, ownPucksOnOwnHalf } from "@/game/stringCarrom/rules";
+import { applySlingShot, step } from "@/game/stringCarrom/physics";
 import { planSlingShot, type Difficulty } from "@/game/stringCarrom/bot";
 import { SLING } from "@/game/stringCarrom/constants";
 import type { MatchState } from "@/game/stringCarrom/types";
@@ -40,19 +40,148 @@ export default function StringCarromMatch() {
       mode === "bot" ? 1 : null,
     ),
   );
-  const [shooting, setShooting] = useState(false);
+  // matchRef mirrors `match` so the rAF physics loop can read latest state without re-subscribing.
+  const matchRef = useRef(match);
+  matchRef.current = match;
+
   const [soundOn, setSoundOn] = useState(true);
   const playSound = useStringCarromSounds(soundOn);
 
   const [online, setOnline] = useState<OnlineMeta | null>(null);
   const [loadingOnline, setLoadingOnline] = useState(mode === "online");
   const finalizingRef = useRef(false);
-  const skipNextPushRef = useRef(false);
   const [paidBotBet, setPaidBotBet] = useState<number>(0);
   const paidBotFinalizedRef = useRef(false);
   const [ghost, setGhost] = useState<React.ComponentProps<typeof StringCarromScene>["ghost"]>(null);
 
-  // ===== ONLINE: load + subscribe =====
+  // Countdown 3..2..1..GO before play starts.
+  const [countdown, setCountdown] = useState(3);
+  const [started, setStarted] = useState(false);
+
+  useEffect(() => {
+    if (started) return;
+    if (countdown <= 0) { setStarted(true); return; }
+    const t = setTimeout(() => setCountdown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [countdown, started]);
+
+  // ===== Continuous physics loop (visible animation) =====
+  // Runs at ~60fps. Each frame, advances physics one step on the live puck array
+  // and triggers a re-render so the UI sees pucks slide and bounce in real time.
+  useEffect(() => {
+    if (!started) return;
+    if (match.winner !== null) return;
+    let raf = 0;
+    let lastSoundT = 0;
+    const tick = () => {
+      const m = matchRef.current;
+      // Snapshot speeds before stepping (to detect collision impacts for sound).
+      const before = m.pucks.map(p => Math.hypot(p.vx, p.vy));
+      const moving = step(m.pucks);
+      // Detect a sharp speed change → collision sound throttle.
+      let bigImpact = false;
+      for (let i = 0; i < m.pucks.length; i++) {
+        const after = Math.hypot(m.pucks[i].vx, m.pucks[i].vy);
+        if (Math.abs(after - before[i]) > 2.5) { bigImpact = true; break; }
+      }
+      const now = performance.now();
+      if (bigImpact && now - lastSoundT > 80) {
+        playSound("tok");
+        lastSoundT = now;
+      }
+      // Force a re-render so the canvas redraws with new puck positions.
+      // We mutate-and-assign to keep the same reference but a new top-level object.
+      setMatch(prev => ({ ...prev, pucks: prev.pucks }));
+
+      // Win check.
+      const w = checkWinner(m);
+      if (w !== null) {
+        setMatch(prev => ({ ...prev, winner: w, message: `${prev.players[w].name} wins!` }));
+        return;
+      }
+      raf = requestAnimationFrame(tick);
+      // Suppress unused warning — `moving` is just informational; we always keep ticking.
+      void moving;
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [started, match.winner, playSound]);
+
+  // ===== Bot loop — fires shots on a cooldown while it still has pucks on its half =====
+  useEffect(() => {
+    if (mode !== "bot" || !started || match.winner !== null) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const cooldownMap: Record<Difficulty, [number, number]> = {
+      easy: [1800, 2600],
+      medium: [1200, 1900],
+      hard: [800, 1300],
+    };
+
+    const fireOne = () => {
+      if (cancelled) return;
+      const m = matchRef.current;
+      if (m.winner !== null) return;
+      // Only sling if the bot still has own pucks on its own half.
+      const remaining = ownPucksOnOwnHalf(m, 1);
+      if (remaining.length === 0) return;
+      const shot = planSlingShot(m, diff, 1);
+      if (!shot) { schedule(); return; }
+
+      // Telegraph ghost: pull back ~600ms then fire.
+      const puck = m.pucks.find(p => p.id === shot.puckId);
+      if (!puck) { schedule(); return; }
+      const anchorY = SLING.anchorYB;
+      const anchorX = puck.x;
+      const pull = SLING.maxPull * shot.power;
+      const start = performance.now();
+      const dur = 500;
+      const animateGhost = () => {
+        if (cancelled) return;
+        const t = Math.min(1, (performance.now() - start) / dur);
+        setGhost({
+          puckId: shot.puckId,
+          posX: anchorX + (-shot.dirX) * pull * t,
+          posY: anchorY + (-shot.dirY) * pull * t,
+          side: 1,
+          anchorX, anchorY,
+          dirX: shot.dirX, dirY: shot.dirY,
+          power: shot.power * t,
+        });
+        if (t < 1) requestAnimationFrame(animateGhost);
+        else {
+          setTimeout(() => {
+            if (cancelled) return;
+            setGhost(null);
+            const live = matchRef.current.pucks.find(p => p.id === shot.puckId);
+            if (live) {
+              applySlingShot(live, shot.dirX, shot.dirY, shot.power);
+              playSound("twang", 0.6 + shot.power * 0.6);
+            }
+            schedule();
+          }, 120);
+        }
+      };
+      requestAnimationFrame(animateGhost);
+    };
+
+    const schedule = () => {
+      if (cancelled) return;
+      const [lo, hi] = cooldownMap[diff];
+      const delay = lo + Math.random() * (hi - lo);
+      timer = setTimeout(fireOne, delay);
+    };
+
+    schedule();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      setGhost(null);
+    };
+  }, [mode, diff, started, match.winner, playSound]);
+
+  // ===== Online: load + subscribe (kept simple — turn-less online uses last-write-wins state push) =====
   useEffect(() => {
     if (mode !== "online" || !onlineMatchId || !user) return;
     let cancelled = false;
@@ -86,26 +215,8 @@ export default function StringCarromMatch() {
       setLoadingOnline(false);
     };
     void init();
-
-    const ch = supabase.channel(`scarrom-match-${onlineMatchId}`)
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${onlineMatchId}` },
-        (payload) => {
-          const newRow: any = payload.new;
-          if (newRow.state && newRow.state.pucks) {
-            skipNextPushRef.current = true;
-            setMatch(newRow.state as MatchState);
-          }
-          if (newRow.status === "finished") setOnline(p => p ? { ...p, status: "finished" } : p);
-        }).subscribe();
-    return () => { cancelled = true; supabase.removeChannel(ch); };
+    return () => { cancelled = true; };
   }, [mode, onlineMatchId, user, navigate]);
-
-  const pushState = useCallback(async (next: MatchState) => {
-    if (mode !== "online" || !onlineMatchId) return;
-    await supabase.from("matches")
-      .update({ state: next as any, updated_at: new Date().toISOString() })
-      .eq("id", onlineMatchId);
-  }, [mode, onlineMatchId]);
 
   // Paid bot match: load bet
   useEffect(() => {
@@ -128,110 +239,35 @@ export default function StringCarromMatch() {
     if (!error) await refreshProfile();
   }, [mode, onlineMatchId, user, paidBotBet, refreshProfile]);
 
+  // On winner: play sound + finalize paid bot.
   useEffect(() => {
-    if (match.winner !== null) playSound("win");
+    if (match.winner === null) return;
+    playSound("win");
+    if (mode === "bot" && paidBotBet > 0) {
+      void finalizePaidBot(match.winner === 0);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [match.winner]);
 
-  // Shooting helper: applies impulse, simulates to rest, resolves rules.
-  const performShot = useCallback((puckId: number, dirX: number, dirY: number, power: number) => {
-    setShooting(true);
-    playSound("twang", 0.6 + power * 0.6);
-    setMatch(prev => {
-      const next: MatchState = JSON.parse(JSON.stringify(prev));
-      const puck = next.pucks.find(p => p.id === puckId);
-      if (!puck) { setShooting(false); return prev; }
-      applySlingShot(puck, dirX, dirY, power);
-      const result = simulate(next.pucks);
-      next.discs = next.pucks;
-      const updated = resolveShot(next, result);
-      // Online sync
-      if (mode === "online" && online && !skipNextPushRef.current) {
-        void pushState(updated);
-        if (updated.winner !== null && online.status !== "finished" && !finalizingRef.current) {
-          finalizingRef.current = true;
-          const winnerUserId = updated.winner === online.mySide ? user!.id : online.opponentId;
-          if (winnerUserId) {
-            supabase.rpc("finalize_match", { _match_id: online.matchId, _winner_id: winnerUserId })
-              .then(() => refreshProfile());
-          }
-        }
-      }
-      if (mode === "bot" && updated.winner !== null && paidBotBet > 0) {
-        void finalizePaidBot(updated.winner === 0);
-      }
-      skipNextPushRef.current = false;
-      // Sound feedback
-      if (result.pucksCrossedGap > 0) playSound("thock");
-      else if (!result.hitAny) playSound("foul");
-      else playSound("tok");
-      return updated;
-    });
-    // Allow short cooldown so UI can react.
-    setTimeout(() => setShooting(false), 350);
-  }, [mode, online, user, paidBotBet, pushState, finalizePaidBot, refreshProfile, playSound]);
-
-  // Bot turn (bot mode only) — telegraph ghost then shoot.
-  useEffect(() => {
-    if (mode !== "bot" || match.winner !== null) return;
-    const me = match.players[match.turn];
-    if (!me.isBot || shooting) return;
-    let cancelled = false;
-    const t1 = setTimeout(() => {
-      if (cancelled) return;
-      const shot = planSlingShot(match, diff);
-      if (!shot) return;
-      const puck = match.pucks.find(p => p.id === shot.puckId);
-      if (!puck) return;
-      // Animate ghost: pull back from anchor along -dir over 700ms, then fire.
-      const anchorY = match.turn === 0 ? SLING.anchorYA : SLING.anchorYB;
-      const anchorX = puck.x;
-      const pull = SLING.maxPull * shot.power;
-      const start = performance.now();
-      const dur = 700;
-      const tick = () => {
-        if (cancelled) return;
-        const t = Math.min(1, (performance.now() - start) / dur);
-        const px = anchorX + (-shot.dirX) * pull * t;
-        const py = anchorY + (-shot.dirY) * pull * t;
-        setGhost({
-          puckId: shot.puckId,
-          posX: px, posY: py,
-          side: match.turn,
-          anchorX, anchorY,
-          dirX: shot.dirX, dirY: shot.dirY,
-          power: shot.power * t,
-        });
-        if (t < 1) requestAnimationFrame(tick);
-        else {
-          setTimeout(() => {
-            if (cancelled) return;
-            setGhost(null);
-            performShot(shot.puckId, shot.dirX, shot.dirY, shot.power);
-          }, 200);
-        }
-      };
-      requestAnimationFrame(tick);
-    }, 700);
-    return () => { cancelled = true; clearTimeout(t1); setGhost(null); };
-  }, [mode, match.turn, match.winner, shooting, diff, match, performShot]);
-
+  // Human sling — applies impulse directly to the live puck. Physics loop animates it.
   const handleSling = (puckId: number, _px: number, _py: number, dirX: number, dirY: number, power: number) => {
-    if (shooting || match.winner !== null) return;
-    if (mode === "online" && online && match.turn !== online.mySide) {
-      toast({ title: "Opponent's turn" });
-      return;
-    }
-    performShot(puckId, dirX, dirY, power);
+    if (!started || match.winner !== null) return;
+    const live = matchRef.current.pucks.find(p => p.id === puckId);
+    if (!live) return;
+    applySlingShot(live, dirX, dirY, power);
+    playSound("twang", 0.6 + power * 0.6);
   };
 
   const restart = () => {
     if (mode === "online") return;
+    paidBotFinalizedRef.current = false;
     setMatch(createMatch(
       mode === "bot" ? "You" : "Player 1",
       mode === "bot" ? `Bot (${diff})` : "Player 2",
       mode === "bot" ? 1 : null,
     ));
+    setCountdown(3);
+    setStarted(false);
     apiRef.current?.reset();
   };
 
@@ -251,18 +287,19 @@ export default function StringCarromMatch() {
     }
   };
 
-  const me = match.players[match.turn];
-  const mySide: 0 | 1 = mode === "online" && online ? online.mySide : (mode === "bot" ? 0 : match.turn);
-  const isMyTurn = mode === "online" && online ? match.turn === online.mySide : !me.isBot;
-  const isHumanTurn = isMyTurn && !shooting && match.winner === null;
+  const mySide: 0 | 1 = mode === "online" && online ? online.mySide : 0;
+  const myRemaining = ownPucksOnOwnHalf(match, mySide).length;
+  const oppSide: 0 | 1 = mySide === 0 ? 1 : 0;
+  const oppRemaining = ownPucksOnOwnHalf(match, oppSide).length;
 
   const titleText = match.winner !== null
-    ? `${match.players[match.winner].name} wins!`
-    : isMyTurn ? "Your Turn" : "Opponent's Turn";
+    ? (match.winner === mySide ? "You Win!" : `${match.players[match.winner].name} wins!`)
+    : !started ? "Get Ready!"
+    : "Sling them across!";
   const subtitle = match.winner !== null
     ? "Game Over"
-    : shooting ? "Shot in progress..."
-    : isMyTurn ? "Pull a puck back to sling" : (mode === "bot" ? "Thinking..." : "Waiting...");
+    : !started ? `Starting in ${countdown}…`
+    : `Yours: ${myRemaining} • Opponent: ${oppRemaining}`;
 
   if (mode === "online" && loadingOnline) {
     return (
@@ -309,32 +346,45 @@ export default function StringCarromMatch() {
           <div className="flex items-center gap-1.5 font-bold">
             <span className="inline-block h-3 w-3 rounded-full bg-white border border-border" />
             <span>{match.players[0].name}</span>
+            <span className="text-muted-foreground">({ownPucksOnOwnHalf(match, 0).length} left)</span>
           </div>
           <button onClick={() => setSoundOn(s => !s)} className="glass-btn h-7 w-7 grid place-items-center">
             {soundOn ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
           </button>
           <div className="flex items-center gap-1.5 font-bold">
+            <span className="text-muted-foreground">({ownPucksOnOwnHalf(match, 1).length} left)</span>
             <span>{match.players[1].name}</span>
             <span className="inline-block h-3 w-3 rounded-full bg-slate-900 border border-border" />
           </div>
         </div>
 
-        <div className="flex-1 flex items-center justify-center min-h-0">
+        <div className="flex-1 flex items-center justify-center min-h-0 relative">
           <StringCarromScene
             ref={apiRef}
             pucks={match.pucks}
-            turn={match.turn}
+            turn={0}
             mySide={mySide}
-            interactive={isHumanTurn}
+            interactive={started && match.winner === null}
             onSling={handleSling}
             ghost={ghost}
           />
+          {!started && match.winner === null && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="rounded-full h-32 w-32 grid place-items-center bg-black/60 border-4 border-primary backdrop-blur-sm">
+                <span className="text-7xl font-black text-primary animate-pulse">
+                  {countdown > 0 ? countdown : "GO!"}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {match.winner !== null && (
           <div className="rounded-2xl p-6 mt-3 text-center bg-card border border-yellow-500/40">
             <Trophy className="h-12 w-12 text-yellow-400 mx-auto mb-2" />
-            <h2 className="text-2xl font-black mb-1">{match.players[match.winner].name} wins!</h2>
+            <h2 className="text-2xl font-black mb-1">
+              {match.winner === mySide ? "You win!" : `${match.players[match.winner].name} wins!`}
+            </h2>
             {mode === "online" && online && online.betAmount > 0 && (
               <p className="text-sm text-amber-300 mb-2">Pot: {online.betAmount * 2} coins</p>
             )}
