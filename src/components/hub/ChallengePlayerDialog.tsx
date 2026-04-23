@@ -110,7 +110,7 @@ export default function ChallengePlayerDialog({ open, onClose, opponent }: Props
           await refreshProfile();
           clearInterval(tick);
           onClose();
-          navigate(gameRoute(game, matchId as string));
+          navigate(gameRoute(game, matchId as string, "bot"));
           return;
         }
       } else {
