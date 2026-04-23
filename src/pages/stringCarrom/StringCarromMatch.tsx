@@ -237,6 +237,8 @@ export default function StringCarromMatch() {
         setPaidBotBet(m.bet_amount ?? 0);
         const fake = (m.state as any)?.fake_opponent;
         if (fake?.display_name) {
+          // Force HARD difficulty for any fake-user match — these bots must feel like top players.
+          setDiff("hard");
           setBotDisplayName(fake.display_name);
           setMatch(prev => {
             const next: MatchState = JSON.parse(JSON.stringify(prev));
