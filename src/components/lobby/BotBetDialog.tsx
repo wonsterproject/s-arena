@@ -7,7 +7,7 @@ import { toast } from "@/hooks/use-toast";
 interface Props {
   open: boolean;
   onClose: () => void;
-  game: "ludo" | "chess" | "carrom" | "pool" | "arena";
+  game: "ludo" | "chess" | "carrom" | "pool" | "arena" | "string_carrom";
   difficulty: "medium" | "hard";
   /** Called with the new match id and chosen bet on success */
   onCreated: (matchId: string, bet: number) => void;

@@ -24,6 +24,8 @@ import PoolLobby from "./pages/pool/PoolLobby.tsx";
 import PoolMatch from "./pages/pool/PoolMatch.tsx";
 import ArenaLobby from "./pages/arena/ArenaLobby.tsx";
 import ArenaMatch from "./pages/arena/ArenaMatch.tsx";
+import StringCarromLobby from "./pages/stringCarrom/StringCarromLobby.tsx";
+import StringCarromMatch from "./pages/stringCarrom/StringCarromMatch.tsx";
 
 
 const queryClient = new QueryClient();
@@ -50,6 +52,8 @@ const App = () => (
             <Route path="/pool/play" element={<ProtectedRoute><PoolMatch /></ProtectedRoute>} />
             <Route path="/arena/lobby" element={<ProtectedRoute><ArenaLobby /></ProtectedRoute>} />
             <Route path="/arena/play" element={<ProtectedRoute><ArenaMatch /></ProtectedRoute>} />
+            <Route path="/string-carrom/lobby" element={<ProtectedRoute><StringCarromLobby /></ProtectedRoute>} />
+            <Route path="/string-carrom/play" element={<ProtectedRoute><StringCarromMatch /></ProtectedRoute>} />
             <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/shop" element={<ProtectedRoute><Shop /></ProtectedRoute>} />
