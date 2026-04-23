@@ -30,9 +30,10 @@ export default function StringCarromMatch() {
   const mode = (params.get("mode") || "bot") as Mode;
   const diff = (params.get("diff") || "medium") as Difficulty;
   const onlineMatchId = params.get("id");
-  const { user, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
 
   const apiRef = useRef<SCSceneApi | null>(null);
+  const [botDisplayName, setBotDisplayName] = useState<string>(`Bot (${diff})`);
   const [match, setMatch] = useState<MatchState>(() =>
     createMatch(
       mode === "bot" ? "You" : "Player 1",
@@ -229,8 +230,19 @@ export default function StringCarromMatch() {
     if (onlineMatchId.startsWith("local-")) return;
     void (async () => {
       const { data: m } = await supabase.from("matches")
-        .select("bet_amount, host_id, status").eq("id", onlineMatchId).maybeSingle();
-      if (m && m.host_id === user.id && m.status !== "finished") setPaidBotBet(m.bet_amount ?? 0);
+        .select("bet_amount, host_id, status, state").eq("id", onlineMatchId).maybeSingle();
+      if (m && m.host_id === user.id && m.status !== "finished") {
+        setPaidBotBet(m.bet_amount ?? 0);
+        const fake = (m.state as any)?.fake_opponent;
+        if (fake?.display_name) {
+          setBotDisplayName(fake.display_name);
+          setMatch(prev => {
+            const next: MatchState = JSON.parse(JSON.stringify(prev));
+            next.players[1].name = fake.display_name;
+            return next;
+          });
+        }
+      }
     })();
   }, [mode, onlineMatchId, user]);
 
@@ -301,10 +313,14 @@ export default function StringCarromMatch() {
   const oppSide: 0 | 1 = mySide === 0 ? 1 : 0;
   const oppRemaining = ownPucksOnOwnHalf(match, oppSide).length;
 
+  const myDisplayName = profile?.display_name || profile?.username || "You";
+  const opponentDisplayName = mode === "online" && online
+    ? online.opponentName
+    : (mode === "bot" ? botDisplayName : match.players[1].name);
   const titleText = match.winner !== null
-    ? (match.winner === mySide ? "You Win!" : `${match.players[match.winner].name} wins!`)
+    ? (match.winner === mySide ? `${myDisplayName} wins!` : `${match.players[match.winner].name} wins!`)
     : !started ? "Get Ready!"
-    : "Sling them across!";
+    : `${opponentDisplayName ? `${myDisplayName} vs ${opponentDisplayName}` : "Sling them across!"}`;
   const subtitle = match.winner !== null
     ? "Game Over"
     : !started ? `Starting in ${countdown}…`
@@ -334,7 +350,7 @@ export default function StringCarromMatch() {
         {mode === "online" && online && (
           <div className="flex items-center justify-center gap-2 px-3 py-1 mb-1 rounded-xl text-xs bg-primary/10 border border-primary/30">
             <Wifi className="h-3 w-3 text-green-400" />
-            <span className="font-bold">Online vs @{online.opponentName}</span>
+            <span className="font-bold">@{profile?.display_name || profile?.username || "You"} vs @{online.opponentName}</span>
             {online.betAmount > 0 && (
               <span className="flex items-center gap-1 text-yellow-400 font-bold">
                 <Coins className="h-3 w-3" /> Pot {online.betAmount * 2}
