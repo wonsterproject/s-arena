@@ -98,9 +98,10 @@ export default function PoolMatch() {
   const mode = (params.get("mode") || "bot") as Mode;
   const diff = (params.get("diff") || "medium") as Difficulty;
   const onlineMatchId = params.get("id");
-  const { user, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
 
   const [match, setMatch] = useState<MatchState>(() => createMatch("You", `Bot (${diff})`, 1));
+  const [botDisplayName, setBotDisplayName] = useState<string>(`Bot (${diff})`);
   const [animBalls, setAnimBalls] = useState<Ball[]>(() => match.balls.map(b => ({ ...b })));
   const [shooting, setShooting] = useState(false);
   const [botHint, setBotHint] = useState<{ dx: number; dz: number } | null>(null);
@@ -206,9 +207,19 @@ export default function PoolMatch() {
     if (onlineMatchId.startsWith("local-")) return;
     void (async () => {
       const { data: m } = await supabase.from("matches")
-        .select("bet_amount, host_id, status").eq("id", onlineMatchId).maybeSingle();
+        .select("bet_amount, host_id, status, state").eq("id", onlineMatchId).maybeSingle();
       if (m && m.host_id === user.id && m.status !== "finished") {
         setPaidBotBet(m.bet_amount ?? 0);
+        // Use fake opponent's display name as bot name when challenged from Hub
+        const fake = (m.state as any)?.fake_opponent;
+        if (fake?.display_name) {
+          setBotDisplayName(fake.display_name);
+          setMatch(prev => {
+            const next: MatchState = JSON.parse(JSON.stringify(prev));
+            next.players[1].name = fake.display_name;
+            return next;
+          });
+        }
       }
     })();
   }, [mode, onlineMatchId, user]);
@@ -364,9 +375,14 @@ export default function PoolMatch() {
     });
   }, [match]);
 
+  const myDisplayName = profile?.display_name || profile?.username || "You";
+  const opponentDisplayName = mode === "online" && online
+    ? online.opponentName
+    : (mode === "bot" ? botDisplayName : match.players[1].name);
+  const turnHolderName = isMyTurn ? myDisplayName : opponentDisplayName;
   const titleText = match.winner !== null
     ? `${match.players[match.winner].name} wins!`
-    : isMyTurn ? "Your Turn" : "Opponent's Turn";
+    : `${turnHolderName}'s Turn`;
 
   const meCount = groupCounts[match.turn];
   const infoText = match.winner !== null ? "Game Over"
@@ -403,7 +419,7 @@ export default function PoolMatch() {
         {mode === "online" && online && (
           <div className="flex items-center justify-center gap-2 px-3 py-1 mt-1 rounded-xl text-xs bg-primary/10 border border-primary/30">
             <Wifi className="h-3 w-3 text-green-400" />
-            <span className="font-bold">Online vs @{online.opponentName}</span>
+            <span className="font-bold">@{myDisplayName} vs @{online.opponentName}</span>
             {online.betAmount > 0 && (
               <span className="flex items-center gap-1 text-yellow-400 font-bold">
                 <Coins className="h-3 w-3" /> Pot {online.betAmount * 2}

@@ -23,7 +23,7 @@ interface OnlineMeta {
 export default function ChessMatch() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const { user, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const mode = (params.get("mode") || "bot") as Mode;
   const difficulty = (params.get("diff") || "medium") as Difficulty;
   const onlineMatchId = params.get("id");
@@ -41,6 +41,7 @@ export default function ChessMatch() {
   // Paid bot match support
   const [paidBotBet, setPaidBotBet] = useState<number>(0);
   const paidBotFinalizedRef = useRef(false);
+  const [botDisplayName, setBotDisplayName] = useState<string>(`CPU (${difficulty})`);
 
   // Load paid bot bet
   useEffect(() => {
@@ -48,8 +49,12 @@ export default function ChessMatch() {
     if (onlineMatchId.startsWith("local-")) return;
     void (async () => {
       const { data: m } = await supabase.from("matches")
-        .select("bet_amount, host_id, status").eq("id", onlineMatchId).maybeSingle();
-      if (m && m.host_id === user.id && m.status !== "finished") setPaidBotBet(m.bet_amount ?? 0);
+        .select("bet_amount, host_id, status, state").eq("id", onlineMatchId).maybeSingle();
+      if (m && m.host_id === user.id && m.status !== "finished") {
+        setPaidBotBet(m.bet_amount ?? 0);
+        const fake = (m.state as any)?.fake_opponent;
+        if (fake?.display_name) setBotDisplayName(fake.display_name);
+      }
     })();
   }, [mode, onlineMatchId, user]);
 
@@ -344,7 +349,7 @@ export default function ChessMatch() {
           <div>
             <PlayerBar
               name={
-                mode === "bot" ? `CPU (${difficulty})`
+                mode === "bot" ? botDisplayName
                   : mode === "online" ? `@${online?.opponentName ?? "Opponent"}`
                   : "Black"
               }
@@ -363,7 +368,7 @@ export default function ChessMatch() {
               />
             </div>
             <PlayerBar
-              name={mode === "bot" ? "You" : mode === "online" ? "You" : "White"}
+              name={profile?.display_name || profile?.username || "You"}
               isActive={mode === "online" ? state.turn === online?.myColor : state.turn === "w"}
               color={mode === "online" ? (online?.myColor ?? "w") : "w"}
             />

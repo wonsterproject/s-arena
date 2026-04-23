@@ -70,6 +70,34 @@ export default function OnlineMatchPanel({ game, gameLabel, minBet = 50 }: Props
     }
     cancelRef.current = false;
     setSearching(true);
+
+    // After 8s without finding a real opponent, auto-match with a random fake user (bot).
+    const fallbackTimer = setTimeout(async () => {
+      if (cancelRef.current) return;
+      try {
+        await cleanup();
+        cancelRef.current = false;
+        // Pick a random fake user persona
+        const { data: fakes } = await supabase.from("fake_users").select("id").limit(200);
+        if (!fakes || fakes.length === 0) return;
+        const pick = fakes[Math.floor(Math.random() * fakes.length)];
+        const { data: matchId, error } = await supabase.rpc("start_match_with_fake_user", {
+          _fake_user_id: pick.id,
+          _game: game as any,
+          _bet: bet,
+        });
+        if (error) throw error;
+        if (matchId) {
+          await refreshProfile();
+          setSearching(false);
+          navigate(gameRoute(game, matchId as string, "bot"));
+        }
+      } catch (err: any) {
+        setSearching(false);
+        toast({ title: "Failed to start match", description: err?.message ?? "Try again", variant: "destructive" });
+      }
+    }, 8000);
+
     try {
       const { data: matchId, error } = await supabase.rpc("join_or_create_game_match", {
         _game: game as any,
@@ -78,11 +106,12 @@ export default function OnlineMatchPanel({ game, gameLabel, minBet = 50 }: Props
       });
       if (error) throw error;
       if (matchId) {
+        clearTimeout(fallbackTimer);
         await refreshProfile();
         navigate(gameRoute(game, matchId as string));
         return;
       }
-      // Queued — wait for someone to match us
+      // Queued — wait for someone to match us OR for the 8s fallback to fire
       toast({ title: "Searching for an opponent…", description: `${gameLabel} · ${bet} coin bet` });
       const ch = supabase
         .channel(`mm-${game}-${user.id}-${Date.now()}`)
@@ -92,13 +121,13 @@ export default function OnlineMatchPanel({ game, gameLabel, minBet = 50 }: Props
           async (payload) => {
             const mid = (payload.new as any).match_id;
             if (cancelRef.current) return;
-            // Confirm it's the right game
             const { data: m } = await supabase
               .from("matches")
               .select("id, game_type")
               .eq("id", mid)
               .maybeSingle();
             if (!m || m.game_type !== game) return;
+            clearTimeout(fallbackTimer);
             await refreshProfile();
             await cleanup();
             setSearching(false);
@@ -107,15 +136,8 @@ export default function OnlineMatchPanel({ game, gameLabel, minBet = 50 }: Props
         )
         .subscribe();
       channelRef.current = ch;
-      // Safety timeout: 2 min
-      setTimeout(async () => {
-        if (cancelRef.current) return;
-        if (!searching && !channelRef.current) return;
-        await cleanup();
-        setSearching(false);
-        toast({ title: "No opponent found", description: "Try again or invite a friend." });
-      }, 120_000);
     } catch (err: any) {
+      clearTimeout(fallbackTimer);
       setSearching(false);
       toast({ title: "Failed", description: err?.message ?? "Try again", variant: "destructive" });
     }

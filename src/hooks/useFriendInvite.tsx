@@ -14,17 +14,18 @@ interface Friend {
   wins: number;
 }
 
-const ROUTE_BY_GAME: Record<GameType, (id: string) => string> = {
-  ludo: (id) => `/match/${id}`,
-  chess: (id) => `/chess/play?mode=online&id=${id}`,
-  carrom: (id) => `/carrom/play?mode=online&id=${id}`,
-  pool: (id) => `/pool/play?mode=online&id=${id}`,
-  arena: (id) => `/arena/play?mode=online&id=${id}`,
-  string_carrom: (id) => `/string-carrom/play?mode=online&id=${id}`,
+const ROUTE_BY_GAME: Record<GameType, (id: string, mode: string) => string> = {
+  // Ludo's match page reads mode/id from URL too — pass them as query params.
+  ludo: (id, mode) => `/match/${id}?mode=${mode}`,
+  chess: (id, mode) => `/chess/play?mode=${mode}&id=${id}`,
+  carrom: (id, mode) => `/carrom/play?mode=${mode}&id=${id}`,
+  pool: (id, mode) => `/pool/play?mode=${mode}&id=${id}`,
+  arena: (id, mode) => `/arena/play?mode=${mode}&id=${id}`,
+  string_carrom: (id, mode) => `/string-carrom/play?mode=${mode}&id=${id}`,
 };
 
-export function gameRoute(game: GameType, matchId: string) {
-  return ROUTE_BY_GAME[game](matchId);
+export function gameRoute(game: GameType, matchId: string, mode: "online" | "bot" = "online") {
+  return ROUTE_BY_GAME[game](matchId, mode);
 }
 
 export function useFriendInvite(game: GameType) {
