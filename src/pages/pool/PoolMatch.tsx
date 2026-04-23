@@ -207,9 +207,19 @@ export default function PoolMatch() {
     if (onlineMatchId.startsWith("local-")) return;
     void (async () => {
       const { data: m } = await supabase.from("matches")
-        .select("bet_amount, host_id, status").eq("id", onlineMatchId).maybeSingle();
+        .select("bet_amount, host_id, status, state").eq("id", onlineMatchId).maybeSingle();
       if (m && m.host_id === user.id && m.status !== "finished") {
         setPaidBotBet(m.bet_amount ?? 0);
+        // Use fake opponent's display name as bot name when challenged from Hub
+        const fake = (m.state as any)?.fake_opponent;
+        if (fake?.display_name) {
+          setBotDisplayName(fake.display_name);
+          setMatch(prev => {
+            const copy = { ...prev, players: prev.players.map(p => ({ ...p })) };
+            copy.players[1].name = fake.display_name;
+            return copy;
+          });
+        }
       }
     })();
   }, [mode, onlineMatchId, user]);
