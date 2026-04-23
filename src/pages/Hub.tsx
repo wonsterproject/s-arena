@@ -2,6 +2,8 @@ import { useNavigate } from "react-router-dom";
 import { LogOut, Coins, Trophy, ShoppingBag, User, ShieldCheck, Crown, Dice5, Circle, Target, Crosshair, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import OnlinePlayersPanel from "@/components/hub/OnlinePlayersPanel";
+import ReferralCard from "@/components/hub/ReferralCard";
 
 interface GameCard {
   id: string;
@@ -113,7 +115,7 @@ export default function Hub() {
         </section>
 
         {/* Games grid */}
-        <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
           {GAMES.map(g => (
             <button
               key={g.id}
@@ -144,6 +146,12 @@ export default function Hub() {
               <div className="absolute -top-8 -right-8 h-32 w-32 rounded-full bg-white/10 blur-2xl group-hover:scale-150 transition-transform" />
             </button>
           ))}
+        </section>
+
+        {/* Referral + Online Players */}
+        <section className="grid lg:grid-cols-2 gap-4 mb-10">
+          <ReferralCard />
+          <OnlinePlayersPanel />
         </section>
 
         <footer className="mt-12 text-center text-xs text-muted-foreground">
