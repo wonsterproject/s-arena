@@ -419,7 +419,7 @@ export default function PoolMatch() {
         {mode === "online" && online && (
           <div className="flex items-center justify-center gap-2 px-3 py-1 mt-1 rounded-xl text-xs bg-primary/10 border border-primary/30">
             <Wifi className="h-3 w-3 text-green-400" />
-            <span className="font-bold">Online vs @{online.opponentName}</span>
+            <span className="font-bold">@{myDisplayName} vs @{online.opponentName}</span>
             {online.betAmount > 0 && (
               <span className="flex items-center gap-1 text-yellow-400 font-bold">
                 <Coins className="h-3 w-3" /> Pot {online.betAmount * 2}
