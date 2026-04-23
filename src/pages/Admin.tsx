@@ -321,10 +321,34 @@ export default function Admin() {
                 {filteredFakes.map((f) => (
                   <tr key={f.id} className="border-b border-border/20 hover:bg-secondary/20">
                     <td className="py-2 pr-2">
-                      <Avatar className="h-9 w-9">
-                        <AvatarImage src={getFakeValue(f, "avatar_url")} alt={f.display_name} />
-                        <AvatarFallback>{f.display_name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                      </Avatar>
+                      <div className="flex flex-col items-center gap-1">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={getFakeValue(f, "avatar_url")} alt={f.display_name} />
+                          <AvatarFallback>{f.display_name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <label
+                          className="glass-btn h-6 px-2 text-[10px] flex items-center gap-1 cursor-pointer"
+                          title="Upload from PC"
+                        >
+                          {uploadingId === f.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Upload className="h-3 w-3" />
+                          )}
+                          Upload
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            disabled={uploadingId === f.id}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) void uploadFakeAvatar(f, file);
+                              e.target.value = "";
+                            }}
+                          />
+                        </label>
+                      </div>
                     </td>
                     <td className="py-2 pr-2">
                       <Input
