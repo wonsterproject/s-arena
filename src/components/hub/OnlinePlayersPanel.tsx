@@ -109,18 +109,23 @@ export default function OnlinePlayersPanel({ game: _game = "ludo" }: Props) {
             <div className="flex items-center gap-1.5 flex-shrink-0">
               <span className="text-[10px] uppercase font-bold text-emerald-400">{timeAgo(u.last_seen_at)}</span>
               <button
-                onClick={() => playWithFake(u)}
-                disabled={startingId === u.id}
-                className="glass-btn h-7 px-2 text-[10px] font-bold flex items-center gap-1 bg-gradient-to-r from-primary/30 to-accent/30 disabled:opacity-50"
-                title={u.is_fake ? "Play vs this user" : "Play random / invite"}
+                onClick={() => openChallenge(u)}
+                className="glass-btn h-7 px-2 text-[10px] font-bold flex items-center gap-1 bg-gradient-to-r from-primary/30 to-accent/30"
+                title="Challenge this player"
               >
-                {startingId === u.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Swords className="h-3 w-3" />}
+                <Swords className="h-3 w-3" />
                 Play
               </button>
             </div>
           </div>
         ))}
       </div>
+
+      <ChallengePlayerDialog
+        open={!!challengeOpponent}
+        onClose={() => setChallengeOpponent(null)}
+        opponent={challengeOpponent}
+      />
     </section>
   );
 }
