@@ -25,7 +25,8 @@ export default function ChessMatch() {
   const navigate = useNavigate();
   const { user, profile, refreshProfile } = useAuth();
   const mode = (params.get("mode") || "bot") as Mode;
-  const difficulty = (params.get("diff") || "medium") as Difficulty;
+  const initialDifficulty = (params.get("diff") || "medium") as Difficulty;
+  const [difficulty, setDifficulty] = useState<Difficulty>(initialDifficulty);
   const onlineMatchId = params.get("id");
 
   const [state, setState] = useState<GameState>(() => initialState());
@@ -53,7 +54,10 @@ export default function ChessMatch() {
       if (m && m.host_id === user.id && m.status !== "finished") {
         setPaidBotBet(m.bet_amount ?? 0);
         const fake = (m.state as any)?.fake_opponent;
-        if (fake?.display_name) setBotDisplayName(fake.display_name);
+        if (fake?.display_name) {
+          setDifficulty("hard"); // Fake-user matches always face top-tier bot.
+          setBotDisplayName(fake.display_name);
+        }
       }
     })();
   }, [mode, onlineMatchId, user]);

@@ -1,9 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 export type SCSound = "thock" | "tick" | "twang" | "tok" | "win" | "foul" | "ui";
 
 export function useStringCarromSounds(enabled: boolean) {
   const ctxRef = useRef<AudioContext | null>(null);
+  const enabledRef = useRef(enabled);
+  enabledRef.current = enabled;
   const getCtx = () => {
     if (!ctxRef.current) {
       const Ctor = (window as any).AudioContext || (window as any).webkitAudioContext;
@@ -13,7 +15,8 @@ export function useStringCarromSounds(enabled: boolean) {
     return ctxRef.current!;
   };
 
-  const play = (name: SCSound, intensity = 1) => {
+  const play = useCallback((name: SCSound, intensity = 1) => {
+    if (!enabledRef.current) return;
     if (!enabled) return;
     const ctx = getCtx();
     if (!ctx) return;
@@ -81,7 +84,7 @@ export function useStringCarromSounds(enabled: boolean) {
         tone(700, 0.06, "sine", 0.10);
         break;
     }
-  };
+  }, []);
 
   useEffect(() => () => { ctxRef.current?.close(); }, []);
   return play;

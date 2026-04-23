@@ -28,12 +28,14 @@ export default function StringCarromMatch() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const mode = (params.get("mode") || "bot") as Mode;
-  const diff = (params.get("diff") || "medium") as Difficulty;
+  const initialDiff = (params.get("diff") || "medium") as Difficulty;
   const onlineMatchId = params.get("id");
   const { user, profile, refreshProfile } = useAuth();
 
   const apiRef = useRef<SCSceneApi | null>(null);
-  const [botDisplayName, setBotDisplayName] = useState<string>(`Bot (${diff})`);
+  // diff is stateful so we can upgrade to "hard" once we know the match is vs a fake user.
+  const [diff, setDiff] = useState<Difficulty>(initialDiff);
+  const [botDisplayName, setBotDisplayName] = useState<string>(`Bot (${initialDiff})`);
   const [match, setMatch] = useState<MatchState>(() =>
     createMatch(
       mode === "bot" ? "You" : "Player 1",
@@ -235,6 +237,8 @@ export default function StringCarromMatch() {
         setPaidBotBet(m.bet_amount ?? 0);
         const fake = (m.state as any)?.fake_opponent;
         if (fake?.display_name) {
+          // Force HARD difficulty for any fake-user match — these bots must feel like top players.
+          setDiff("hard");
           setBotDisplayName(fake.display_name);
           setMatch(prev => {
             const next: MatchState = JSON.parse(JSON.stringify(prev));

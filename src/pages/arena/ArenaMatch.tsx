@@ -30,7 +30,8 @@ export default function ArenaMatch() {
   const { user, profile, refreshProfile } = useAuth();
   const [params] = useSearchParams();
   const mode = (params.get("mode") || "bot") as Mode;
-  const diff = (params.get("diff") as Diff) || "medium";
+  const initialDiff = (params.get("diff") as Diff) || "medium";
+  const [diff, setDiff] = useState<Diff>(initialDiff);
   const onlineMatchId = params.get("id");
   const isMobile = useIsMobile();
 
@@ -65,6 +66,7 @@ export default function ArenaMatch() {
         setPaidBotBet(m.bet_amount ?? 0);
         const fake = (m.state as any)?.fake_opponent;
         if (fake?.display_name) {
+          setDiff("hard"); // Fake-user matches always face top-tier bot.
           stateRef.current.entities[1].name = fake.display_name;
         }
       }

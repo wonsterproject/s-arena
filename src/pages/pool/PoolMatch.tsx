@@ -96,7 +96,8 @@ export default function PoolMatch() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const mode = (params.get("mode") || "bot") as Mode;
-  const diff = (params.get("diff") || "medium") as Difficulty;
+  const initialDiff = (params.get("diff") || "medium") as Difficulty;
+  const [diff, setDiff] = useState<Difficulty>(initialDiff);
   const onlineMatchId = params.get("id");
   const { user, profile, refreshProfile } = useAuth();
 
@@ -213,6 +214,7 @@ export default function PoolMatch() {
         // Use fake opponent's display name as bot name when challenged from Hub
         const fake = (m.state as any)?.fake_opponent;
         if (fake?.display_name) {
+          setDiff("hard"); // Fake-user matches always face top-tier bot.
           setBotDisplayName(fake.display_name);
           setMatch(prev => {
             const next: MatchState = JSON.parse(JSON.stringify(prev));
