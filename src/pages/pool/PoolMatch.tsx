@@ -375,9 +375,14 @@ export default function PoolMatch() {
     });
   }, [match]);
 
+  const myDisplayName = profile?.display_name || profile?.username || "You";
+  const opponentDisplayName = mode === "online" && online
+    ? online.opponentName
+    : (mode === "bot" ? botDisplayName : match.players[1].name);
+  const turnHolderName = isMyTurn ? myDisplayName : opponentDisplayName;
   const titleText = match.winner !== null
     ? `${match.players[match.winner].name} wins!`
-    : isMyTurn ? "Your Turn" : "Opponent's Turn";
+    : `${turnHolderName}'s Turn`;
 
   const meCount = groupCounts[match.turn];
   const infoText = match.winner !== null ? "Game Over"
