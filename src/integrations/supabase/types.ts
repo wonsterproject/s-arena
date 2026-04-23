@@ -641,7 +641,13 @@ export type Database = {
     Enums: {
       app_role: "admin" | "moderator" | "user"
       friend_request_status: "pending" | "accepted" | "declined"
-      game_type: "ludo" | "chess" | "carrom" | "pool" | "arena"
+      game_type:
+        | "ludo"
+        | "chess"
+        | "carrom"
+        | "pool"
+        | "arena"
+        | "string_carrom"
       invite_status: "pending" | "accepted" | "declined" | "cancelled"
       match_mode: "bot" | "1v1" | "2v2" | "1v2" | "custom" | "random"
       match_status: "waiting" | "active" | "finished" | "cancelled"
@@ -783,7 +789,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "moderator", "user"],
       friend_request_status: ["pending", "accepted", "declined"],
-      game_type: ["ludo", "chess", "carrom", "pool", "arena"],
+      game_type: ["ludo", "chess", "carrom", "pool", "arena", "string_carrom"],
       invite_status: ["pending", "accepted", "declined", "cancelled"],
       match_mode: ["bot", "1v1", "2v2", "1v2", "custom", "random"],
       match_status: ["waiting", "active", "finished", "cancelled"],
