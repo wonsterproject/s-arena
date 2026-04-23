@@ -50,6 +50,7 @@ export default function Admin() {
   const [editing, setEditing] = useState<Record<string, Partial<PlayerRow>>>({});
   const [editingFake, setEditingFake] = useState<Record<string, Partial<FakeUserRow>>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [shopItems, setShopItems] = useState<ShopItem[]>([]);
   const [grantTarget, setGrantTarget] = useState<string | null>(null);
   const [tab, setTab] = useState<"players" | "fakes" | "payments">("players");
