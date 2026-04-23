@@ -182,8 +182,8 @@ export default function Admin() {
       toast({ title: "Invalid file", description: "Please select an image", variant: "destructive" });
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
-      toast({ title: "Too large", description: "Max 2MB", variant: "destructive" });
+    if (file.size > 9 * 1024 * 1024) {
+      toast({ title: "Too large", description: "Max 9MB", variant: "destructive" });
       return;
     }
     setUploadingId(f.id);
