@@ -114,29 +114,30 @@ export default function StringCarromMatch() {
     let timer: ReturnType<typeof setTimeout> | null = null;
 
     const cooldownMap: Record<Difficulty, [number, number]> = {
-      easy: [1800, 2600],
-      medium: [1200, 1900],
-      hard: [800, 1300],
+      easy:   [1400, 2000],
+      medium: [900,  1400],
+      hard:   [600,  1000],
     };
 
     const fireOne = () => {
       if (cancelled) return;
       const m = matchRef.current;
       if (m.winner !== null) return;
-      // Only sling if the bot still has own pucks on its own half.
-      const remaining = ownPucksOnOwnHalf(m, 1);
-      if (remaining.length === 0) return;
       const shot = planSlingShot(m, diff, 1);
-      if (!shot) { schedule(); return; }
+      if (!shot) {
+        // No shot available right now (everything moving / no pucks) — try again soon.
+        timer = setTimeout(fireOne, 600);
+        return;
+      }
 
-      // Telegraph ghost: pull back ~600ms then fire.
       const puck = m.pucks.find(p => p.id === shot.puckId);
       if (!puck) { schedule(); return; }
+      // Anchor at bot's baseline, x at the puck's current x — matches a real human pull.
       const anchorY = SLING.anchorYB;
       const anchorX = puck.x;
       const pull = SLING.maxPull * shot.power;
       const start = performance.now();
-      const dur = 500;
+      const dur = 450;
       const animateGhost = () => {
         if (cancelled) return;
         const t = Math.min(1, (performance.now() - start) / dur);
@@ -156,11 +157,14 @@ export default function StringCarromMatch() {
             setGhost(null);
             const live = matchRef.current.pucks.find(p => p.id === shot.puckId);
             if (live) {
+              // Teleport puck to the stretched release position — same behaviour as humans.
+              live.x = anchorX + (-shot.dirX) * pull;
+              live.y = anchorY + (-shot.dirY) * pull;
               applySlingShot(live, shot.dirX, shot.dirY, shot.power);
               playSound("twang", 0.6 + shot.power * 0.6);
             }
             schedule();
-          }, 120);
+          }, 100);
         }
       };
       requestAnimationFrame(animateGhost);
@@ -173,7 +177,8 @@ export default function StringCarromMatch() {
       timer = setTimeout(fireOne, delay);
     };
 
-    schedule();
+    // Kick off bot's first shot quickly after start.
+    timer = setTimeout(fireOne, 600);
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
