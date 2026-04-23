@@ -35,6 +35,45 @@ export type Database = {
         }
         Relationships: []
       }
+      fake_users: {
+        Row: {
+          avatar_url: string
+          coins: number
+          created_at: string
+          display_name: string
+          game_id: string
+          id: string
+          losses: number
+          updated_at: string
+          username: string
+          wins: number
+        }
+        Insert: {
+          avatar_url: string
+          coins?: number
+          created_at?: string
+          display_name: string
+          game_id: string
+          id?: string
+          losses?: number
+          updated_at?: string
+          username: string
+          wins?: number
+        }
+        Update: {
+          avatar_url?: string
+          coins?: number
+          created_at?: string
+          display_name?: string
+          game_id?: string
+          id?: string
+          losses?: number
+          updated_at?: string
+          username?: string
+          wins?: number
+        }
+        Relationships: []
+      }
       friend_requests: {
         Row: {
           created_at: string
@@ -622,6 +661,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      bump_fake_user_stats: {
+        Args: { _human_won: boolean; _match_id: string }
+        Returns: undefined
+      }
       claim_daily_reward: {
         Args: never
         Returns: {
@@ -673,10 +716,12 @@ export type Database = {
       get_online_users: {
         Args: { _limit?: number }
         Returns: {
+          avatar_url: string
           coins: number
           display_name: string
           game_id: string
           id: string
+          is_fake: boolean
           last_seen_at: string
           username: string
           wins: number
@@ -733,6 +778,14 @@ export type Database = {
           _coins: number
           _easypaisa_name: string
           _easypaisa_number: string
+        }
+        Returns: string
+      }
+      start_match_with_fake_user: {
+        Args: {
+          _bet?: number
+          _fake_user_id: string
+          _game: Database["public"]["Enums"]["game_type"]
         }
         Returns: string
       }
