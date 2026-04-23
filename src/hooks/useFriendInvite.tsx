@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 
-export type GameType = "ludo" | "chess" | "carrom" | "pool" | "arena";
+export type GameType = "ludo" | "chess" | "carrom" | "pool" | "arena" | "string_carrom";
 
 interface Friend {
   id: string;
@@ -20,6 +20,7 @@ const ROUTE_BY_GAME: Record<GameType, (id: string) => string> = {
   carrom: (id) => `/carrom/play?mode=online&id=${id}`,
   pool: (id) => `/pool/play?mode=online&id=${id}`,
   arena: (id) => `/arena/play?mode=online&id=${id}`,
+  string_carrom: (id) => `/string-carrom/play?mode=online&id=${id}`,
 };
 
 export function gameRoute(game: GameType, matchId: string) {
