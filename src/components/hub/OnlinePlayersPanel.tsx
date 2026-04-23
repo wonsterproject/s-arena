@@ -1,10 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
 import { Users, Wifi, RefreshCw, Loader2, Swords } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { toast } from "@/hooks/use-toast";
-import { gameRoute, type GameType } from "@/hooks/useFriendInvite";
+import { type GameType } from "@/hooks/useFriendInvite";
+import ChallengePlayerDialog from "@/components/hub/ChallengePlayerDialog";
 
 interface OnlineUser {
   id: string;
@@ -36,11 +35,10 @@ interface Props {
   game?: GameType;
 }
 
-export default function OnlinePlayersPanel({ game = "ludo" }: Props) {
-  const navigate = useNavigate();
+export default function OnlinePlayersPanel({ game: _game = "ludo" }: Props) {
   const [users, setUsers] = useState<OnlineUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [startingId, setStartingId] = useState<string | null>(null);
+  const [challengeOpponent, setChallengeOpponent] = useState<OnlineUser | null>(null);
 
   const load = useCallback(async () => {
     const { data, error } = await supabase.rpc("get_online_users", { _limit: 250 });
@@ -54,27 +52,7 @@ export default function OnlinePlayersPanel({ game = "ludo" }: Props) {
     return () => clearInterval(t);
   }, [load]);
 
-  const playWithFake = async (u: OnlineUser) => {
-    if (!u.is_fake) {
-      toast({ title: "This player is online — invite them as a friend or play random match." });
-      return;
-    }
-    setStartingId(u.id);
-    try {
-      const { data: matchId, error } = await supabase.rpc("start_match_with_fake_user", {
-        _fake_user_id: u.id,
-        _game: game as never,
-        _bet: 0,
-      });
-      if (error) throw error;
-      if (matchId) navigate(gameRoute(game, matchId as string));
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Try again";
-      toast({ title: "Failed to start match", description: message, variant: "destructive" });
-    } finally {
-      setStartingId(null);
-    }
-  };
+  const openChallenge = (u: OnlineUser) => setChallengeOpponent(u);
 
   return (
     <section className="glass rounded-3xl p-5 ring-1 ring-white/10">
@@ -131,18 +109,23 @@ export default function OnlinePlayersPanel({ game = "ludo" }: Props) {
             <div className="flex items-center gap-1.5 flex-shrink-0">
               <span className="text-[10px] uppercase font-bold text-emerald-400">{timeAgo(u.last_seen_at)}</span>
               <button
-                onClick={() => playWithFake(u)}
-                disabled={startingId === u.id}
-                className="glass-btn h-7 px-2 text-[10px] font-bold flex items-center gap-1 bg-gradient-to-r from-primary/30 to-accent/30 disabled:opacity-50"
-                title={u.is_fake ? "Play vs this user" : "Play random / invite"}
+                onClick={() => openChallenge(u)}
+                className="glass-btn h-7 px-2 text-[10px] font-bold flex items-center gap-1 bg-gradient-to-r from-primary/30 to-accent/30"
+                title="Challenge this player"
               >
-                {startingId === u.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Swords className="h-3 w-3" />}
+                <Swords className="h-3 w-3" />
                 Play
               </button>
             </div>
           </div>
         ))}
       </div>
+
+      <ChallengePlayerDialog
+        open={!!challengeOpponent}
+        onClose={() => setChallengeOpponent(null)}
+        opponent={challengeOpponent}
+      />
     </section>
   );
 }
