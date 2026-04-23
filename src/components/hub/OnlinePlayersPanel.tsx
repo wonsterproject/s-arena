@@ -1,10 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
 import { Users, Wifi, RefreshCw, Loader2, Swords } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { toast } from "@/hooks/use-toast";
-import { gameRoute, type GameType } from "@/hooks/useFriendInvite";
+import { type GameType } from "@/hooks/useFriendInvite";
+import ChallengePlayerDialog from "@/components/hub/ChallengePlayerDialog";
 
 interface OnlineUser {
   id: string;
