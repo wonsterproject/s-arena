@@ -177,7 +177,40 @@ export default function Admin() {
     void loadAll();
   };
 
-  const toggleAdmin = async (p: PlayerRow) => {
+  const uploadFakeAvatar = async (f: FakeUserRow, file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid file", description: "Please select an image", variant: "destructive" });
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "Too large", description: "Max 2MB", variant: "destructive" });
+      return;
+    }
+    setUploadingId(f.id);
+    const ext = file.name.split(".").pop() || "jpg";
+    const path = `fake/${f.id}-${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, {
+      cacheControl: "3600",
+      upsert: true,
+      contentType: file.type,
+    });
+    if (upErr) {
+      setUploadingId(null);
+      toast({ title: "Upload failed", description: upErr.message, variant: "destructive" });
+      return;
+    }
+    const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
+    const url = pub.publicUrl;
+    const { error: updErr } = await supabase.from("fake_users" as never).update({ avatar_url: url } as never).eq("id", f.id);
+    setUploadingId(null);
+    if (updErr) {
+      toast({ title: "Save failed", description: updErr.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Avatar updated", description: f.display_name });
+    void loadAll();
+  };
+
     const grant = !p.is_admin;
     const { error } = await supabase.rpc("admin_set_role", {
       _user_id: p.id,
