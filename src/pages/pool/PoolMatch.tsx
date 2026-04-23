@@ -96,7 +96,8 @@ export default function PoolMatch() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const mode = (params.get("mode") || "bot") as Mode;
-  const diff = (params.get("diff") || "medium") as Difficulty;
+  const initialDiff = (params.get("diff") || "medium") as Difficulty;
+  const [diff, setDiff] = useState<Difficulty>(initialDiff);
   const onlineMatchId = params.get("id");
   const { user, profile, refreshProfile } = useAuth();
 

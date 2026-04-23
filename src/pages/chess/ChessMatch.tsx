@@ -25,7 +25,8 @@ export default function ChessMatch() {
   const navigate = useNavigate();
   const { user, profile, refreshProfile } = useAuth();
   const mode = (params.get("mode") || "bot") as Mode;
-  const difficulty = (params.get("diff") || "medium") as Difficulty;
+  const initialDifficulty = (params.get("diff") || "medium") as Difficulty;
+  const [difficulty, setDifficulty] = useState<Difficulty>(initialDifficulty);
   const onlineMatchId = params.get("id");
 
   const [state, setState] = useState<GameState>(() => initialState());

@@ -30,7 +30,8 @@ export default function ArenaMatch() {
   const { user, profile, refreshProfile } = useAuth();
   const [params] = useSearchParams();
   const mode = (params.get("mode") || "bot") as Mode;
-  const diff = (params.get("diff") as Diff) || "medium";
+  const initialDiff = (params.get("diff") as Diff) || "medium";
+  const [diff, setDiff] = useState<Diff>(initialDiff);
   const onlineMatchId = params.get("id");
   const isMobile = useIsMobile();
 
