@@ -349,7 +349,7 @@ export default function ChessMatch() {
           <div>
             <PlayerBar
               name={
-                mode === "bot" ? `CPU (${difficulty})`
+                mode === "bot" ? botDisplayName
                   : mode === "online" ? `@${online?.opponentName ?? "Opponent"}`
                   : "Black"
               }
@@ -368,7 +368,7 @@ export default function ChessMatch() {
               />
             </div>
             <PlayerBar
-              name={mode === "bot" ? "You" : mode === "online" ? "You" : "White"}
+              name={profile?.display_name || profile?.username || "You"}
               isActive={mode === "online" ? state.turn === online?.myColor : state.turn === "w"}
               color={mode === "online" ? (online?.myColor ?? "w") : "w"}
             />
