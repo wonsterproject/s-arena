@@ -215,9 +215,9 @@ export default function PoolMatch() {
         if (fake?.display_name) {
           setBotDisplayName(fake.display_name);
           setMatch(prev => {
-            const copy = { ...prev, players: prev.players.map(p => ({ ...p })) };
-            copy.players[1].name = fake.display_name;
-            return copy;
+            const next: MatchState = JSON.parse(JSON.stringify(prev));
+            next.players[1].name = fake.display_name;
+            return next;
           });
         }
       }
