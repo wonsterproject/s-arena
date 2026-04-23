@@ -55,13 +55,19 @@ export default function ArenaMatch() {
   const [paidBotBet, setPaidBotBet] = useState<number>(0);
   const paidBotFinalizedRef = useRef(false);
 
-  // Load paid bot match bet
+  // Load paid bot match bet + fake opponent persona
   useEffect(() => {
     if (mode !== "bot" || !onlineMatchId || !user) return;
     void (async () => {
       const { data: m } = await supabase.from("matches")
-        .select("bet_amount, host_id, status").eq("id", onlineMatchId).maybeSingle();
-      if (m && m.host_id === user.id && m.status !== "finished") setPaidBotBet(m.bet_amount ?? 0);
+        .select("bet_amount, host_id, status, state").eq("id", onlineMatchId).maybeSingle();
+      if (m && m.host_id === user.id && m.status !== "finished") {
+        setPaidBotBet(m.bet_amount ?? 0);
+        const fake = (m.state as any)?.fake_opponent;
+        if (fake?.display_name) {
+          stateRef.current.entities[1].name = fake.display_name;
+        }
+      }
     })();
   }, [mode, onlineMatchId, user]);
 
