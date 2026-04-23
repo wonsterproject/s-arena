@@ -218,6 +218,12 @@ export default function CarromMatch() {
         void finalizePaidBot(updated.winner === 0);
       }
       skipNextPushRef.current = false;
+      // Always reset striker to current player's baseline for the next shot,
+      // even if the same player continues (e.g., after pocketing own coin).
+      if (updated.winner === null) {
+        const z = updated.turn === 0 ? BOARD.baselineY : -BOARD.baselineY;
+        setTimeout(() => apiRef.current?.setStrikerPosition(0, z), 50);
+      }
       return updated;
     });
     setShooting(false);
