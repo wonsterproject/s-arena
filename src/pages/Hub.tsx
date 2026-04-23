@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { LogOut, Coins, Trophy, ShoppingBag, User, ShieldCheck, Crown, Dice5, Circle, Target, Crosshair } from "lucide-react";
+import { LogOut, Coins, Trophy, ShoppingBag, User, ShieldCheck, Crown, Dice5, Circle, Target, Crosshair, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 
@@ -57,6 +57,15 @@ const GAMES: GameCard[] = [
     icon: <Crosshair className="h-12 w-12" />,
     gradient: "from-rose-600 via-orange-500 to-amber-400",
     route: "/arena/lobby",
+    status: "live",
+  },
+  {
+    id: "string-carrom",
+    title: "Sling Puck",
+    tagline: "Pull · Sling · Win",
+    icon: <Zap className="h-12 w-12" />,
+    gradient: "from-amber-700 via-orange-600 to-yellow-400",
+    route: "/string-carrom/lobby",
     status: "live",
   },
 ];
