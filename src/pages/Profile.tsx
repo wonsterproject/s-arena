@@ -23,8 +23,8 @@ export default function Profile() {
   const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
-    if (file.size > 2 * 1024 * 1024) {
-      toast({ title: "Too large", description: "Max 2MB", variant: "destructive" });
+    if (file.size > 9 * 1024 * 1024) {
+      toast({ title: "Too large", description: "Max 9MB", variant: "destructive" });
       return;
     }
     setUploading(true);
