@@ -249,11 +249,15 @@ export default function StringCarromMatch() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [match.winner]);
 
-  // Human sling — applies impulse directly to the live puck. Physics loop animates it.
-  const handleSling = (puckId: number, _px: number, _py: number, dirX: number, dirY: number, power: number) => {
+  // Human sling — teleport puck to the RELEASE position, then apply impulse.
+  // This way the puck flies from where the finger let go (the stretched-back position),
+  // not from its original spawn location.
+  const handleSling = (puckId: number, px: number, py: number, dirX: number, dirY: number, power: number) => {
     if (!started || match.winner !== null) return;
     const live = matchRef.current.pucks.find(p => p.id === puckId);
     if (!live) return;
+    live.x = px;
+    live.y = py;
     applySlingShot(live, dirX, dirY, power);
     playSound("twang", 0.6 + power * 0.6);
   };
