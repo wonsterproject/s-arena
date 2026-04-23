@@ -211,6 +211,7 @@ export default function Admin() {
     void loadAll();
   };
 
+  const toggleAdmin = async (p: PlayerRow) => {
     const grant = !p.is_admin;
     const { error } = await supabase.rpc("admin_set_role", {
       _user_id: p.id,
