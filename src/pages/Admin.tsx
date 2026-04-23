@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Search, Save, ShieldCheck, ShieldOff, Gift, ArrowLeft, Coins, Trophy, Swords, Wallet, Users, UserCog } from "lucide-react";
+import { Loader2, Search, Save, ShieldCheck, ShieldOff, Gift, ArrowLeft, Coins, Trophy, Swords, Wallet, Users, UserCog, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
@@ -50,6 +50,7 @@ export default function Admin() {
   const [editing, setEditing] = useState<Record<string, Partial<PlayerRow>>>({});
   const [editingFake, setEditingFake] = useState<Record<string, Partial<FakeUserRow>>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [shopItems, setShopItems] = useState<ShopItem[]>([]);
   const [grantTarget, setGrantTarget] = useState<string | null>(null);
   const [tab, setTab] = useState<"players" | "fakes" | "payments">("players");
@@ -176,6 +177,40 @@ export default function Admin() {
     void loadAll();
   };
 
+  const uploadFakeAvatar = async (f: FakeUserRow, file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid file", description: "Please select an image", variant: "destructive" });
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "Too large", description: "Max 2MB", variant: "destructive" });
+      return;
+    }
+    setUploadingId(f.id);
+    const ext = file.name.split(".").pop() || "jpg";
+    const path = `fake/${f.id}-${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, {
+      cacheControl: "3600",
+      upsert: true,
+      contentType: file.type,
+    });
+    if (upErr) {
+      setUploadingId(null);
+      toast({ title: "Upload failed", description: upErr.message, variant: "destructive" });
+      return;
+    }
+    const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
+    const url = pub.publicUrl;
+    const { error: updErr } = await supabase.from("fake_users" as never).update({ avatar_url: url } as never).eq("id", f.id);
+    setUploadingId(null);
+    if (updErr) {
+      toast({ title: "Save failed", description: updErr.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Avatar updated", description: f.display_name });
+    void loadAll();
+  };
+
   const toggleAdmin = async (p: PlayerRow) => {
     const grant = !p.is_admin;
     const { error } = await supabase.rpc("admin_set_role", {
@@ -286,10 +321,34 @@ export default function Admin() {
                 {filteredFakes.map((f) => (
                   <tr key={f.id} className="border-b border-border/20 hover:bg-secondary/20">
                     <td className="py-2 pr-2">
-                      <Avatar className="h-9 w-9">
-                        <AvatarImage src={getFakeValue(f, "avatar_url")} alt={f.display_name} />
-                        <AvatarFallback>{f.display_name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                      </Avatar>
+                      <div className="flex flex-col items-center gap-1">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={getFakeValue(f, "avatar_url")} alt={f.display_name} />
+                          <AvatarFallback>{f.display_name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <label
+                          className="glass-btn h-6 px-2 text-[10px] flex items-center gap-1 cursor-pointer"
+                          title="Upload from PC"
+                        >
+                          {uploadingId === f.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Upload className="h-3 w-3" />
+                          )}
+                          Upload
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            disabled={uploadingId === f.id}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) void uploadFakeAvatar(f, file);
+                              e.target.value = "";
+                            }}
+                          />
+                        </label>
+                      </div>
                     </td>
                     <td className="py-2 pr-2">
                       <Input
