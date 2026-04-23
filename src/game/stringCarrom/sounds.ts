@@ -84,7 +84,7 @@ export function useStringCarromSounds(enabled: boolean) {
         tone(700, 0.06, "sine", 0.10);
         break;
     }
-  };
+  }, []);
 
   useEffect(() => () => { ctxRef.current?.close(); }, []);
   return play;
