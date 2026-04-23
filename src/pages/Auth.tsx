@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Loader2, LogIn, UserPlus, Dice5, Eye, EyeOff } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Loader2, LogIn, UserPlus, Dice5, Eye, EyeOff, Gift } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, usernameToEmail } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
@@ -13,9 +13,11 @@ interface AuthPageProps {
 
 export default function Auth({ mode }: AuthPageProps) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, loading } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [referralCode, setReferralCode] = useState(() => (searchParams.get("ref") ?? "").toUpperCase());
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -47,12 +49,16 @@ export default function Auth({ mode }: AuthPageProps) {
     const email = usernameToEmail(username);
     try {
       if (mode === "signup") {
+        const cleanRef = referralCode.trim().toUpperCase();
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/hub`,
-            data: { username: username.trim().toLowerCase() },
+            data: {
+              username: username.trim().toLowerCase(),
+              ...(cleanRef ? { referral_code: cleanRef } : {}),
+            },
           },
         });
         if (error) throw error;
@@ -126,6 +132,22 @@ export default function Auth({ mode }: AuthPageProps) {
               </button>
             </div>
           </div>
+          {mode === "signup" && (
+            <div className="space-y-2">
+              <Label htmlFor="referral" className="flex items-center gap-1.5">
+                <Gift className="h-3.5 w-3.5 text-primary" />
+                Referral code <span className="text-xs text-muted-foreground font-normal">(optional · +50 bonus)</span>
+              </Label>
+              <Input
+                id="referral"
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value.toUpperCase().slice(0, 6))}
+                placeholder="ABC123"
+                className="bg-secondary/50 font-mono tracking-wider uppercase"
+                maxLength={6}
+              />
+            </div>
+          )}
           <button
             type="submit"
             disabled={busy}

@@ -393,8 +393,14 @@ export type Database = {
           coins: number
           created_at: string
           display_name: string | null
+          game_id: string | null
           id: string
+          last_seen_at: string | null
           losses: number
+          referral_code: string | null
+          referral_locked_coins: number
+          referral_turnover_remaining: number
+          referred_by: string | null
           updated_at: string
           username: string
           wins: number
@@ -404,8 +410,14 @@ export type Database = {
           coins?: number
           created_at?: string
           display_name?: string | null
+          game_id?: string | null
           id: string
+          last_seen_at?: string | null
           losses?: number
+          referral_code?: string | null
+          referral_locked_coins?: number
+          referral_turnover_remaining?: number
+          referred_by?: string | null
           updated_at?: string
           username: string
           wins?: number
@@ -415,13 +427,78 @@ export type Database = {
           coins?: number
           created_at?: string
           display_name?: string | null
+          game_id?: string | null
           id?: string
+          last_seen_at?: string | null
           losses?: number
+          referral_code?: string | null
+          referral_locked_coins?: number
+          referral_turnover_remaining?: number
+          referred_by?: string | null
           updated_at?: string
           username?: string
           wins?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_referred_by_fkey"
+            columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referrals: {
+        Row: {
+          buy_bonus_amount: number
+          buy_bonus_paid: boolean
+          buy_bonus_unlocked: boolean
+          created_at: string
+          id: string
+          referred_id: string
+          referrer_id: string
+          signup_bonus_paid: boolean
+          updated_at: string
+        }
+        Insert: {
+          buy_bonus_amount?: number
+          buy_bonus_paid?: boolean
+          buy_bonus_unlocked?: boolean
+          created_at?: string
+          id?: string
+          referred_id: string
+          referrer_id: string
+          signup_bonus_paid?: boolean
+          updated_at?: string
+        }
+        Update: {
+          buy_bonus_amount?: number
+          buy_bonus_paid?: boolean
+          buy_bonus_unlocked?: boolean
+          created_at?: string
+          id?: string
+          referred_id?: string
+          referrer_id?: string
+          signup_bonus_paid?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_referred_id_fkey"
+            columns: ["referred_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_id_fkey"
+            columns: ["referrer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       shop_items: {
         Row: {
@@ -591,6 +668,31 @@ export type Database = {
         Args: { _match_id: string; _winner_id: string }
         Returns: undefined
       }
+      generate_unique_game_id: { Args: never; Returns: string }
+      generate_unique_referral_code: { Args: never; Returns: string }
+      get_online_users: {
+        Args: { _limit?: number }
+        Returns: {
+          coins: number
+          display_name: string
+          game_id: string
+          id: string
+          last_seen_at: string
+          username: string
+          wins: number
+        }[]
+      }
+      get_referral_stats: {
+        Args: never
+        Returns: {
+          game_id: string
+          invited_count: number
+          locked_coins: number
+          referral_code: string
+          rewarded_count: number
+          turnover_remaining: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -598,6 +700,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      heartbeat: { Args: never; Returns: undefined }
       is_match_participant: {
         Args: { _match_id: string; _user: string }
         Returns: boolean

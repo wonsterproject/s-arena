@@ -10,6 +10,10 @@ interface Profile {
   coins: number;
   wins: number;
   losses: number;
+  game_id?: string | null;
+  referral_code?: string | null;
+  referral_locked_coins?: number;
+  referral_turnover_remaining?: number;
 }
 
 interface AuthContextValue {
@@ -60,6 +64,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  // Presence heartbeat: ping every 60s while logged in
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    const ping = async () => {
+      if (cancelled) return;
+      try { await supabase.rpc("heartbeat"); } catch { /* ignore */ }
+    };
+    void ping();
+    const t = setInterval(ping, 60_000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, [user]);
 
   const refreshProfile = async () => {
     if (user) await fetchProfile(user.id);
