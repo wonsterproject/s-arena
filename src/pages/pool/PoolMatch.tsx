@@ -98,7 +98,7 @@ export default function PoolMatch() {
   const mode = (params.get("mode") || "bot") as Mode;
   const diff = (params.get("diff") || "medium") as Difficulty;
   const onlineMatchId = params.get("id");
-  const { user, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
 
   const [match, setMatch] = useState<MatchState>(() => createMatch("You", `Bot (${diff})`, 1));
   const [botDisplayName, setBotDisplayName] = useState<string>(`Bot (${diff})`);
