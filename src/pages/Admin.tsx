@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Search, Save, ShieldCheck, ShieldOff, Gift, ArrowLeft, Coins, Trophy, Swords, Wallet, Users } from "lucide-react";
+import { Loader2, Search, Save, ShieldCheck, ShieldOff, Gift, ArrowLeft, Coins, Trophy, Swords, Wallet, Users, UserCog } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { toast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import PaymentRequestsPanel from "@/components/admin/PaymentRequestsPanel";
 
 interface PlayerRow {
@@ -17,6 +18,17 @@ interface PlayerRow {
   wins: number;
   losses: number;
   is_admin?: boolean;
+}
+
+interface FakeUserRow {
+  id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string;
+  game_id: string;
+  coins: number;
+  wins: number;
+  losses: number;
 }
 
 interface ShopItem {
@@ -30,15 +42,19 @@ export default function Admin() {
   const { user, loading: authLoading } = useAuth();
   const { isAdmin, loading: roleLoading } = useIsAdmin();
   const [players, setPlayers] = useState<PlayerRow[]>([]);
+  const [fakes, setFakes] = useState<FakeUserRow[]>([]);
   const [adminIds, setAdminIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
+  const [fakeSearch, setFakeSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Record<string, Partial<PlayerRow>>>({});
+  const [editingFake, setEditingFake] = useState<Record<string, Partial<FakeUserRow>>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [shopItems, setShopItems] = useState<ShopItem[]>([]);
   const [grantTarget, setGrantTarget] = useState<string | null>(null);
-  const [tab, setTab] = useState<"players" | "payments">("players");
+  const [tab, setTab] = useState<"players" | "fakes" | "payments">("players");
   const [pendingCount, setPendingCount] = useState(0);
+  void adminIds;
 
   useEffect(() => {
     if (authLoading || roleLoading) return;
@@ -57,17 +73,19 @@ export default function Admin() {
 
   const loadAll = async () => {
     setLoading(true);
-    const [{ data: profs }, { data: roles }, { data: items }, { count }] = await Promise.all([
+    const [{ data: profs }, { data: roles }, { data: items }, { count }, { data: fakeData }] = await Promise.all([
       supabase.from("profiles").select("id, username, display_name, coins, wins, losses").order("coins", { ascending: false }).limit(500),
       supabase.from("user_roles").select("user_id").eq("role", "admin"),
       supabase.from("shop_items").select("id, name, price_coins").order("price_coins"),
       supabase.from("payment_requests").select("*", { count: "exact", head: true }).eq("status", "pending"),
+      supabase.from("fake_users" as never).select("id, username, display_name, avatar_url, game_id, coins, wins, losses").order("display_name").limit(500),
     ]);
-    const adminSet = new Set<string>((roles ?? []).map((r: any) => r.user_id));
+    const adminSet = new Set<string>(((roles ?? []) as { user_id: string }[]).map((r) => r.user_id));
     setAdminIds(adminSet);
-    setPlayers((profs ?? []).map((p: any) => ({ ...p, is_admin: adminSet.has(p.id) })));
+    setPlayers(((profs ?? []) as PlayerRow[]).map((p) => ({ ...p, is_admin: adminSet.has(p.id) })));
     setShopItems((items ?? []) as ShopItem[]);
     setPendingCount(count ?? 0);
+    setFakes((fakeData ?? []) as FakeUserRow[]);
     setLoading(false);
   };
 
@@ -79,16 +97,32 @@ export default function Admin() {
     );
   }, [players, search]);
 
+  const filteredFakes = useMemo(() => {
+    const q = fakeSearch.trim().toLowerCase();
+    if (!q) return fakes;
+    return fakes.filter(
+      (f) => f.username.toLowerCase().includes(q) || f.display_name.toLowerCase().includes(q) || f.game_id.includes(q),
+    );
+  }, [fakes, fakeSearch]);
+
   const setField = (id: string, field: keyof PlayerRow, value: string | number) => {
     setEditing((prev) => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
+  };
+  const setFakeField = (id: string, field: keyof FakeUserRow, value: string | number) => {
+    setEditingFake((prev) => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
   };
 
   const getValue = (p: PlayerRow, field: keyof PlayerRow) => {
     const e = editing[p.id];
-    return (e && e[field] !== undefined ? e[field] : p[field]) as any;
+    return (e && e[field] !== undefined ? e[field] : p[field]) as string | number;
+  };
+  const getFakeValue = <K extends keyof FakeUserRow>(f: FakeUserRow, field: K): FakeUserRow[K] => {
+    const e = editingFake[f.id];
+    return (e && e[field] !== undefined ? (e[field] as FakeUserRow[K]) : f[field]);
   };
 
   const isDirty = (id: string) => !!editing[id] && Object.keys(editing[id]).length > 0;
+  const isFakeDirty = (id: string) => !!editingFake[id] && Object.keys(editingFake[id]).length > 0;
 
   const save = async (p: PlayerRow) => {
     const e = editing[p.id];
@@ -96,11 +130,11 @@ export default function Admin() {
     setSavingId(p.id);
     const { error } = await supabase.rpc("admin_update_profile", {
       _user_id: p.id,
-      _coins: e.coins !== undefined ? Number(e.coins) : null,
-      _wins: e.wins !== undefined ? Number(e.wins) : null,
-      _losses: e.losses !== undefined ? Number(e.losses) : null,
-      _display_name: e.display_name !== undefined ? String(e.display_name) : null,
-      _username: e.username !== undefined ? String(e.username) : null,
+      _coins: e.coins !== undefined ? Number(e.coins) : undefined,
+      _wins: e.wins !== undefined ? Number(e.wins) : undefined,
+      _losses: e.losses !== undefined ? Number(e.losses) : undefined,
+      _display_name: e.display_name !== undefined ? String(e.display_name) : undefined,
+      _username: e.username !== undefined ? String(e.username) : undefined,
     });
     setSavingId(null);
     if (error) {
@@ -111,6 +145,32 @@ export default function Admin() {
     setEditing((prev) => {
       const cp = { ...prev };
       delete cp[p.id];
+      return cp;
+    });
+    void loadAll();
+  };
+
+  const saveFake = async (f: FakeUserRow) => {
+    const e = editingFake[f.id];
+    if (!e) return;
+    setSavingId(f.id);
+    const patch: Partial<FakeUserRow> = {};
+    if (e.display_name !== undefined) patch.display_name = String(e.display_name);
+    if (e.username !== undefined) patch.username = String(e.username);
+    if (e.avatar_url !== undefined) patch.avatar_url = String(e.avatar_url);
+    if (e.coins !== undefined) patch.coins = Number(e.coins);
+    if (e.wins !== undefined) patch.wins = Number(e.wins);
+    if (e.losses !== undefined) patch.losses = Number(e.losses);
+    const { error } = await supabase.from("fake_users" as never).update(patch as never).eq("id", f.id);
+    setSavingId(null);
+    if (error) {
+      toast({ title: "Save failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Saved", description: `Updated ${f.display_name}` });
+    setEditingFake((prev) => {
+      const cp = { ...prev };
+      delete cp[f.id];
       return cp;
     });
     void loadAll();
@@ -162,12 +222,18 @@ export default function Admin() {
         <div className="w-24" />
       </header>
 
-      <div className="mx-auto max-w-6xl flex gap-2 mb-4">
+      <div className="mx-auto max-w-6xl flex gap-2 mb-4 flex-wrap">
         <button
           onClick={() => setTab("players")}
           className={`glass-btn h-10 px-4 flex items-center gap-2 text-sm ${tab === "players" ? "bg-gradient-to-r from-primary/40 to-accent/40" : ""}`}
         >
-          <Users className="h-4 w-4" /> Players
+          <Users className="h-4 w-4" /> Real Players ({players.length})
+        </button>
+        <button
+          onClick={() => setTab("fakes")}
+          className={`glass-btn h-10 px-4 flex items-center gap-2 text-sm ${tab === "fakes" ? "bg-gradient-to-r from-primary/40 to-accent/40" : ""}`}
+        >
+          <UserCog className="h-4 w-4" /> Fake Users ({fakes.length})
         </button>
         <button
           onClick={() => setTab("payments")}
@@ -182,11 +248,122 @@ export default function Admin() {
         </button>
       </div>
 
-      {tab === "payments" ? (
+      {tab === "payments" && (
         <section className="mx-auto max-w-6xl">
           <PaymentRequestsPanel />
         </section>
-      ) : (
+      )}
+
+      {tab === "fakes" && (
+        <section className="mx-auto max-w-6xl glass rounded-3xl p-4 neon-border">
+          <div className="flex items-center gap-2 mb-4">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search fake users by name or game ID..."
+              value={fakeSearch}
+              onChange={(e) => setFakeSearch(e.target.value)}
+              className="bg-secondary/50"
+            />
+            <span className="text-xs text-muted-foreground whitespace-nowrap">{filteredFakes.length} fake users</span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b border-border/40">
+                  <th className="py-2 pr-2">Avatar</th>
+                  <th className="py-2 pr-2">Display name</th>
+                  <th className="py-2 pr-2">Username</th>
+                  <th className="py-2 pr-2">Game ID</th>
+                  <th className="py-2 pr-2"><Coins className="inline h-3 w-3" /> Coins</th>
+                  <th className="py-2 pr-2"><Trophy className="inline h-3 w-3" /> Wins</th>
+                  <th className="py-2 pr-2"><Swords className="inline h-3 w-3" /> Losses</th>
+                  <th className="py-2 pr-2">Avatar URL</th>
+                  <th className="py-2 pr-2">Save</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredFakes.map((f) => (
+                  <tr key={f.id} className="border-b border-border/20 hover:bg-secondary/20">
+                    <td className="py-2 pr-2">
+                      <Avatar className="h-9 w-9">
+                        <AvatarImage src={getFakeValue(f, "avatar_url")} alt={f.display_name} />
+                        <AvatarFallback>{f.display_name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                    </td>
+                    <td className="py-2 pr-2">
+                      <Input
+                        value={getFakeValue(f, "display_name") ?? ""}
+                        onChange={(e) => setFakeField(f.id, "display_name", e.target.value)}
+                        className="h-8 bg-secondary/40 min-w-[120px]"
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <Input
+                        value={getFakeValue(f, "username") ?? ""}
+                        onChange={(e) => setFakeField(f.id, "username", e.target.value)}
+                        className="h-8 bg-secondary/40 min-w-[140px]"
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <span className="text-xs font-mono text-muted-foreground">{f.game_id}</span>
+                    </td>
+                    <td className="py-2 pr-2">
+                      <Input
+                        type="number"
+                        value={getFakeValue(f, "coins") ?? 0}
+                        onChange={(e) => setFakeField(f.id, "coins", Number(e.target.value))}
+                        className="h-8 bg-secondary/40 w-24"
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <Input
+                        type="number"
+                        value={getFakeValue(f, "wins") ?? 0}
+                        onChange={(e) => setFakeField(f.id, "wins", Number(e.target.value))}
+                        className="h-8 bg-secondary/40 w-20"
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <Input
+                        type="number"
+                        value={getFakeValue(f, "losses") ?? 0}
+                        onChange={(e) => setFakeField(f.id, "losses", Number(e.target.value))}
+                        className="h-8 bg-secondary/40 w-20"
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <Input
+                        value={getFakeValue(f, "avatar_url") ?? ""}
+                        onChange={(e) => setFakeField(f.id, "avatar_url", e.target.value)}
+                        className="h-8 bg-secondary/40 min-w-[200px] text-xs"
+                        placeholder="https://..."
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <button
+                        disabled={!isFakeDirty(f.id) || savingId === f.id}
+                        onClick={() => saveFake(f)}
+                        className="glass-btn h-8 px-2 text-xs flex items-center gap-1 bg-gradient-to-r from-primary/30 to-accent/30 disabled:opacity-40"
+                      >
+                        {savingId === f.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                        Save
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {filteredFakes.length === 0 && (
+                  <tr>
+                    <td colSpan={9} className="text-center py-8 text-muted-foreground">No fake users</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {tab === "players" && (
       <section className="mx-auto max-w-6xl glass rounded-3xl p-4 neon-border">
         <div className="flex items-center gap-2 mb-4">
           <Search className="h-4 w-4 text-muted-foreground" />
