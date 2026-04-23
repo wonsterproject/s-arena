@@ -82,8 +82,10 @@ export default function Match() {
   const stateRef = useRef<GameState | null>(null);
   const [soundOn, setSoundOn] = useState(true);
   const [boardTheme, setBoardTheme] = useState<BoardTheme>(() => {
-    if (typeof window === "undefined") return "realistic";
-    return (localStorage.getItem("ludo:boardTheme") as BoardTheme) || "realistic";
+    if (typeof window === "undefined") return "classic";
+    // Respect any saved preference (existing users keep "realistic" if they had chosen it).
+    // Default for everyone else is now "classic".
+    return (localStorage.getItem("ludo:boardTheme") as BoardTheme) || "classic";
   });
   useEffect(() => {
     try { localStorage.setItem("ludo:boardTheme", boardTheme); } catch {}

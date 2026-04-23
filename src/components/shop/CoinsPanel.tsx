@@ -21,7 +21,7 @@ interface PaymentRequest {
 }
 
 export default function CoinsPanel() {
-  const { user, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const [mode, setMode] = useState<"buy" | "withdraw" | null>(null);
   const [settings, setSettings] = useState<PaymentSettings | null>(null);
   const [history, setHistory] = useState<PaymentRequest[]>([]);
@@ -206,6 +206,11 @@ export default function CoinsPanel() {
           <div className="rounded-xl bg-orange-500/10 border border-orange-500/30 p-2 text-xs text-orange-300">
             Min 1000 coins · 1 coin = 1 PKR · Coins lock ho jayein gay until admin approve
           </div>
+          {(profile?.referral_locked_coins ?? 0) > 0 && (
+            <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-2 text-xs text-amber-300">
+              <strong>{profile?.referral_locked_coins?.toLocaleString()}</strong> coins are locked (referral bonus). Withdrawable: <strong>{Math.max(0, (profile?.coins ?? 0) - (profile?.referral_locked_coins ?? 0)).toLocaleString()}</strong>
+            </div>
+          )}
           <div>
             <Label className="text-xs">Quantity (coins to withdraw)</Label>
             <Input
