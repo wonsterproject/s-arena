@@ -101,6 +101,7 @@ export default function PoolMatch() {
   const { user, refreshProfile } = useAuth();
 
   const [match, setMatch] = useState<MatchState>(() => createMatch("You", `Bot (${diff})`, 1));
+  const [botDisplayName, setBotDisplayName] = useState<string>(`Bot (${diff})`);
   const [animBalls, setAnimBalls] = useState<Ball[]>(() => match.balls.map(b => ({ ...b })));
   const [shooting, setShooting] = useState(false);
   const [botHint, setBotHint] = useState<{ dx: number; dz: number } | null>(null);
