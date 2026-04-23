@@ -35,7 +35,7 @@ const GAMES: { id: GameType; label: string; icon: React.ReactNode; gradient: str
   { id: "string_carrom", label: "Sling", icon: <Zap className="h-5 w-5" />, gradient: "from-amber-700 to-yellow-400" },
 ];
 
-const BET_PRESETS = [0, 50, 100, 500, 1000, 5000];
+const BET_PRESETS = [50, 100, 500, 1000, 5000];
 const COUNTDOWN_SECONDS = 10;
 
 function initials(s?: string | null) {
@@ -69,6 +69,10 @@ export default function ChallengePlayerDialog({ open, onClose, opponent }: Props
 
   const startMatch = async () => {
     if (!opponent) return;
+    if (bet < 50) {
+      toast({ title: "Minimum bet is 50 coins", variant: "destructive" });
+      return;
+    }
     if (bet > (profile?.coins ?? 0)) {
       toast({ title: "Not enough coins", variant: "destructive" });
       return;
