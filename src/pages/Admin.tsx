@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Search, Save, ShieldCheck, ShieldOff, Gift, ArrowLeft, Coins, Trophy, Swords, Wallet, Users, UserCog } from "lucide-react";
+import { Loader2, Search, Save, ShieldCheck, ShieldOff, Gift, ArrowLeft, Coins, Trophy, Swords, Wallet, Users, UserCog, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
