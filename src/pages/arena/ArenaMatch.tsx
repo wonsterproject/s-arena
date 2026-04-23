@@ -66,6 +66,7 @@ export default function ArenaMatch() {
         setPaidBotBet(m.bet_amount ?? 0);
         const fake = (m.state as any)?.fake_opponent;
         if (fake?.display_name) {
+          setDiff("hard"); // Fake-user matches always face top-tier bot.
           stateRef.current.entities[1].name = fake.display_name;
         }
       }

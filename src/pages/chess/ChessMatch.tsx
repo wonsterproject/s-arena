@@ -54,7 +54,10 @@ export default function ChessMatch() {
       if (m && m.host_id === user.id && m.status !== "finished") {
         setPaidBotBet(m.bet_amount ?? 0);
         const fake = (m.state as any)?.fake_opponent;
-        if (fake?.display_name) setBotDisplayName(fake.display_name);
+        if (fake?.display_name) {
+          setDifficulty("hard"); // Fake-user matches always face top-tier bot.
+          setBotDisplayName(fake.display_name);
+        }
       }
     })();
   }, [mode, onlineMatchId, user]);
