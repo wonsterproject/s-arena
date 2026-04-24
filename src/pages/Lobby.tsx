@@ -557,7 +557,7 @@ const ModeCard = forwardRef<HTMLButtonElement, ModeCardProps>(({ title, desc, ic
       className={`glass relative overflow-hidden rounded-2xl p-5 text-left transition-all hover:scale-[1.02] hover:neon-border bg-gradient-to-br ${gradient} disabled:opacity-60`}
     >
       <div className="flex items-center justify-between mb-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-background/40 backdrop-blur">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-background/60">
           {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : icon}
         </div>
       </div>
