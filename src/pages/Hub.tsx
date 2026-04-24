@@ -159,6 +159,7 @@ export default function Hub() {
           S-ARENA · Play. Win. Repeat.
         </footer>
       </div>
+      <WhatsAppFloat />
     </main>
   );
 }
