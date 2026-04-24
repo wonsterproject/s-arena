@@ -119,7 +119,6 @@ export default function MatchInvitesPanel() {
       <div className="space-y-2">
         {invites.map((inv) => {
           const meta = GAME_META[inv.game_type] ?? GAME_META.ludo;
-          const name = inv.profile?.display_name || inv.profile?.username || "Player";
           return (
             <div key={inv.id} className="flex items-center gap-2 rounded-xl bg-secondary/40 p-2.5">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary/40 to-accent/40">
