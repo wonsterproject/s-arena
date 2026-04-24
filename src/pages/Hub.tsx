@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import OnlinePlayersPanel from "@/components/hub/OnlinePlayersPanel";
 import ReferralCard from "@/components/hub/ReferralCard";
+import FriendsPanel from "@/components/hub/FriendsPanel";
 import WhatsAppFloat from "@/components/WhatsAppFloat";
 
 interface GameCard {
