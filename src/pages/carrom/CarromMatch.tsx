@@ -64,6 +64,7 @@ export default function CarromMatch() {
   });
   const skipNextPushRef = useRef(false);
   const [paidBotBet, setPaidBotBet] = useState<number>(0);
+  const [isFakeUserMatch, setIsFakeUserMatch] = useState(false);
   const paidBotFinalizedRef = useRef(false);
 
   // ===== ONLINE: load + subscribe =====
@@ -136,7 +137,7 @@ export default function CarromMatch() {
         if (fake?.display_name) {
           setDiff("hard"); // Fake-user matches always face top-tier bot.
           setBotDisplayName(fake.display_name);
-          setMatch(prev => {
+          setIsFakeUserMatch(true);
             const next: MatchState = JSON.parse(JSON.stringify(prev));
             next.players[1].name = fake.display_name;
             return next;
