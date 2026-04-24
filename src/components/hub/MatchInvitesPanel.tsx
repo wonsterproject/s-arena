@@ -13,8 +13,11 @@ interface MatchInvite {
   mode: "1v1" | "2v2" | string;
   game_type: GameType;
   bet_amount: number;
+  created_at: string;
   profile: { username: string; display_name: string | null } | null;
 }
+
+const INVITE_TTL_MS = 50_000;
 
 const GAME_META: Record<GameType, { label: string; icon: React.ReactNode }> = {
   ludo: { label: "Ludo", icon: <Dice5 className="h-4 w-4" /> },
