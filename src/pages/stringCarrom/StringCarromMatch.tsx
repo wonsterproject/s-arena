@@ -410,6 +410,7 @@ export default function StringCarromMatch() {
   // not from its original spawn location.
   const handleSling = (puckId: number, px: number, py: number, dirX: number, dirY: number, power: number) => {
     if (!started || match.winner !== null) return;
+    if (mode === "online" && online?.status !== "active") return;
     const live = matchRef.current.pucks.find(p => p.id === puckId);
     if (!live) return;
     live.x = px;
@@ -430,6 +431,13 @@ export default function StringCarromMatch() {
     setStarted(false);
     apiRef.current?.reset();
   };
+
+  useEffect(() => {
+    if (mode !== "online") return;
+    if (online?.status === "active") return;
+    setStarted(false);
+    setGhost(null);
+  }, [mode, online?.status]);
 
   const resign = async () => {
     if (mode !== "online" || !online || !user) return;
@@ -458,10 +466,12 @@ export default function StringCarromMatch() {
     : (mode === "bot" ? botDisplayName : match.players[1].name);
   const titleText = match.winner !== null
     ? (match.winner === mySide ? `${myDisplayName} wins!` : `${match.players[match.winner].name} wins!`)
+    : mode === "online" && online?.status === "waiting" ? "Waiting for opponent"
     : !started ? "Get Ready!"
     : `${opponentDisplayName ? `${myDisplayName} vs ${opponentDisplayName}` : "Sling them across!"}`;
   const subtitle = match.winner !== null
     ? "Game Over"
+    : mode === "online" && online?.status === "waiting" ? "Match will start after accept"
     : !started ? `Starting in ${countdown}…`
     : `Yours: ${myRemaining} • Opponent: ${oppRemaining}`;
 
