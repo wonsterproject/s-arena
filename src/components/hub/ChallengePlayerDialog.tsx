@@ -161,9 +161,9 @@ export default function ChallengePlayerDialog({ open, onClose, opponent }: Props
             </div>
           </DialogTitle>
           <DialogDescription>
-            {step === "game" && "Pick a game to play"}
-            {step === "bet" && "Set your bet amount"}
-            {step === "waiting" && "Match starting…"}
+            {step === "game" && (opponent.is_fake ? "This profile is a pro bot persona — pick a game to start the bot match" : "Pick a game and send a real challenge request" )}
+            {step === "bet" && (opponent.is_fake ? "Set your bet for this bot match" : "Set your bet before sending the invite" )}
+            {step === "waiting" && (opponent.is_fake ? "Preparing bot match…" : "Waiting for opponent to accept…" )}
           </DialogDescription>
         </DialogHeader>
 
