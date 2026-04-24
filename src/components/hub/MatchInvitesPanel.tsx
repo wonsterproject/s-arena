@@ -39,20 +39,24 @@ export default function MatchInvitesPanel() {
     const { data } = await supabase
       .from("match_invites")
       .select(
-        "id, match_id, from_user, mode, status, profile:from_user ( username, display_name ), match:matches!match_invites_match_id_fkey ( game_type, bet_amount )"
+        "id, match_id, from_user, mode, status, created_at, profile:from_user ( username, display_name ), match:matches!match_invites_match_id_fkey ( game_type, bet_amount )"
       )
       .eq("to_user", user.id)
       .eq("status", "pending")
       .order("created_at", { ascending: false });
-    const mapped: MatchInvite[] = ((data ?? []) as any[]).map((r) => ({
-      id: r.id,
-      match_id: r.match_id,
-      from_user: r.from_user,
-      mode: r.mode,
-      profile: r.profile,
-      game_type: (r.match?.game_type ?? "ludo") as GameType,
-      bet_amount: r.match?.bet_amount ?? 0,
-    }));
+    const cutoff = Date.now() - INVITE_TTL_MS;
+    const mapped: MatchInvite[] = ((data ?? []) as any[])
+      .filter((r) => new Date(r.created_at).getTime() >= cutoff)
+      .map((r) => ({
+        id: r.id,
+        match_id: r.match_id,
+        from_user: r.from_user,
+        mode: r.mode,
+        profile: r.profile,
+        created_at: r.created_at,
+        game_type: (r.match?.game_type ?? "ludo") as GameType,
+        bet_amount: r.match?.bet_amount ?? 0,
+      }));
     setInvites(mapped);
   }, [user]);
 
