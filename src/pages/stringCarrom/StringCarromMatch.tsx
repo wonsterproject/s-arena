@@ -55,6 +55,11 @@ export default function StringCarromMatch() {
   const [online, setOnline] = useState<OnlineMeta | null>(null);
   const [loadingOnline, setLoadingOnline] = useState(mode === "online");
   const finalizingRef = useRef(false);
+  const channelRef = useRef<any>(null);
+  const lastBroadcastAtRef = useRef(0);
+  const lastPersistAtRef = useRef(0);
+  const lastLocalDbWriteAtRef = useRef(0);
+  const lastRemoteStateAtRef = useRef(0);
 
   // Auto-win if opponent disconnects for 15s+ (refresh-tolerant)
   useMatchPresence({
@@ -73,12 +78,44 @@ export default function StringCarromMatch() {
   const [countdown, setCountdown] = useState(3);
   const [started, setStarted] = useState(false);
 
+  const toSyncedState = useCallback((source: MatchState) => (
+    JSON.parse(JSON.stringify({
+      pucks: source.pucks,
+      discs: source.pucks,
+      striker: source.striker,
+      turn: source.turn,
+      message: source.message,
+      winner: source.winner,
+      shotInProgress: source.shotInProgress,
+      lastFoul: source.lastFoul,
+    })) as MatchState
+  ), []);
+
+  const mergeIncomingState = useCallback((base: MatchState, incoming: any): MatchState => {
+    if (!incoming || !Array.isArray(incoming.pucks)) return base;
+    const pucks = incoming.pucks as MatchState["pucks"];
+    return {
+      ...base,
+      ...incoming,
+      players: base.players,
+      pucks,
+      discs: pucks,
+      striker: incoming.striker ?? base.striker,
+      turn: base.turn,
+      message: incoming.message ?? base.message,
+      winner: incoming.winner ?? null,
+      shotInProgress: incoming.shotInProgress ?? base.shotInProgress,
+      lastFoul: incoming.lastFoul ?? base.lastFoul,
+    };
+  }, []);
+
   useEffect(() => {
+    if (mode === "online" && online?.status !== "active") return;
     if (started) return;
     if (countdown <= 0) { setStarted(true); return; }
     const t = setTimeout(() => setCountdown(c => c - 1), 1000);
     return () => clearTimeout(t);
-  }, [countdown, started]);
+  }, [countdown, started, mode, online?.status]);
 
   // ===== Continuous physics loop (visible animation) =====
   // Runs at ~60fps. Each frame, advances physics one step on the live puck array
@@ -88,6 +125,32 @@ export default function StringCarromMatch() {
     if (match.winner !== null) return;
     let raf = 0;
     let lastSoundT = 0;
+    const syncOnlineState = (snapshot: MatchState, forcePersist = false) => {
+      if (mode !== "online" || !online || online.status !== "active" || !channelRef.current) return;
+      const now = performance.now();
+      const synced = toSyncedState(snapshot);
+      const sentAt = Date.now();
+
+      if (now - lastBroadcastAtRef.current > 50) {
+        lastBroadcastAtRef.current = now;
+        lastRemoteStateAtRef.current = sentAt;
+        void channelRef.current.send({
+          type: "broadcast",
+          event: "state",
+          payload: { at: sentAt, state: synced },
+        });
+      }
+
+      if (forcePersist || now - lastPersistAtRef.current > 250) {
+        lastPersistAtRef.current = now;
+        lastLocalDbWriteAtRef.current = sentAt;
+        void supabase
+          .from("matches")
+          .update({ state: synced as any, updated_at: new Date(sentAt).toISOString() })
+          .eq("id", online.matchId);
+      }
+    };
+
     const tick = () => {
       const m = matchRef.current;
       // Snapshot speeds before stepping (to detect collision impacts for sound).
@@ -106,12 +169,27 @@ export default function StringCarromMatch() {
       }
       // Force a re-render so the canvas redraws with new puck positions.
       // We mutate-and-assign to keep the same reference but a new top-level object.
-      setMatch(prev => ({ ...prev, pucks: prev.pucks }));
+      setMatch(prev => ({ ...prev, pucks: prev.pucks, discs: prev.pucks }));
+
+      if (mode === "online" && online?.status === "active") {
+        syncOnlineState(m, !moving);
+      }
 
       // Win check.
       const w = checkWinner(m);
       if (w !== null) {
-        setMatch(prev => ({ ...prev, winner: w, message: `${prev.players[w].name} wins!` }));
+        const finalState = { ...m, winner: w, message: `${m.players[w].name} wins!`, discs: m.pucks };
+        setMatch(prev => ({ ...prev, winner: w, message: `${prev.players[w].name} wins!`, discs: prev.pucks }));
+        if (mode === "online" && online && online.status !== "finished" && !finalizingRef.current) {
+          syncOnlineState(finalState, true);
+          finalizingRef.current = true;
+          const winnerUserId = w === online.mySide ? user?.id ?? null : online.opponentId;
+          if (winnerUserId) {
+            void supabase
+              .rpc("finalize_match", { _match_id: online.matchId, _winner_id: winnerUserId })
+              .then(() => refreshProfile());
+          }
+        }
         return;
       }
       raf = requestAnimationFrame(tick);
@@ -120,7 +198,7 @@ export default function StringCarromMatch() {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [started, match.winner, playSound]);
+  }, [started, match.winner, playSound, mode, online, refreshProfile, toSyncedState, user?.id]);
 
   // ===== Bot loop — fires shots on a cooldown while it still has pucks on its half =====
   useEffect(() => {
@@ -201,10 +279,11 @@ export default function StringCarromMatch() {
     };
   }, [mode, diff, started, match.winner, playSound]);
 
-  // ===== Online: load + subscribe (kept simple — turn-less online uses last-write-wins state push) =====
+  // ===== Online: load + subscribe =====
   useEffect(() => {
     if (mode !== "online" || !onlineMatchId || !user) return;
     let cancelled = false;
+
     const init = async () => {
       const { data: m, error } = await supabase
         .from("matches").select("id, host_id, status, bet_amount, state")
@@ -229,14 +308,54 @@ export default function StringCarromMatch() {
         mySide === 0 ? oppName : meName,
         null,
       );
-      setMatch((m.state && (m.state as any).pucks) ? (m.state as any) : startMatch);
+      const initial = (m.state && (m.state as any).pucks)
+        ? mergeIncomingState(startMatch, m.state)
+        : startMatch;
+      setMatch(initial);
       setOnline({ matchId: m.id, mySide, opponentName: oppName, opponentId: opp?.user_id ?? null,
         betAmount: m.bet_amount ?? 0, status: m.status as any });
+      setCountdown(3);
+      setStarted((m.status as OnlineMeta["status"]) === "active");
       setLoadingOnline(false);
     };
     void init();
-    return () => { cancelled = true; };
-  }, [mode, onlineMatchId, user, navigate]);
+
+    const ch = supabase.channel(`string-carrom-${onlineMatchId}`, { config: { broadcast: { self: false } } })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${onlineMatchId}` }, (payload) => {
+        const newRow: any = payload.new;
+        const nextStatus = (newRow.status ?? "waiting") as OnlineMeta["status"];
+        setOnline((prev) => prev ? { ...prev, status: nextStatus } : prev);
+
+        if (nextStatus === "active") {
+          setCountdown(3);
+          setStarted(false);
+        }
+
+        if (newRow.state?.pucks) {
+          const updatedAtMs = newRow.updated_at ? new Date(newRow.updated_at).getTime() : 0;
+          if (updatedAtMs && updatedAtMs <= lastLocalDbWriteAtRef.current) return;
+          lastRemoteStateAtRef.current = updatedAtMs;
+          setMatch((prev) => mergeIncomingState(prev, newRow.state));
+        }
+      })
+      .on("broadcast", { event: "state" }, ({ payload }) => {
+        if (!payload?.state || !payload.state.pucks) return;
+        const at = typeof payload.at === "number" ? payload.at : Date.now();
+        if (at <= lastLocalDbWriteAtRef.current || at <= lastRemoteStateAtRef.current) return;
+        lastRemoteStateAtRef.current = at;
+        setMatch((prev) => mergeIncomingState(prev, payload.state));
+      })
+      .subscribe();
+
+    channelRef.current = ch;
+    return () => {
+      cancelled = true;
+      if (channelRef.current) {
+        void supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [mode, onlineMatchId, user, navigate, mergeIncomingState]);
 
   // Paid bot match: load bet
   useEffect(() => {
@@ -291,6 +410,7 @@ export default function StringCarromMatch() {
   // not from its original spawn location.
   const handleSling = (puckId: number, px: number, py: number, dirX: number, dirY: number, power: number) => {
     if (!started || match.winner !== null) return;
+    if (mode === "online" && online?.status !== "active") return;
     const live = matchRef.current.pucks.find(p => p.id === puckId);
     if (!live) return;
     live.x = px;
@@ -311,6 +431,13 @@ export default function StringCarromMatch() {
     setStarted(false);
     apiRef.current?.reset();
   };
+
+  useEffect(() => {
+    if (mode !== "online") return;
+    if (online?.status === "active") return;
+    setStarted(false);
+    setGhost(null);
+  }, [mode, online?.status]);
 
   const resign = async () => {
     if (mode !== "online" || !online || !user) return;
@@ -339,10 +466,12 @@ export default function StringCarromMatch() {
     : (mode === "bot" ? botDisplayName : match.players[1].name);
   const titleText = match.winner !== null
     ? (match.winner === mySide ? `${myDisplayName} wins!` : `${match.players[match.winner].name} wins!`)
+    : mode === "online" && online?.status === "waiting" ? "Waiting for opponent"
     : !started ? "Get Ready!"
     : `${opponentDisplayName ? `${myDisplayName} vs ${opponentDisplayName}` : "Sling them across!"}`;
   const subtitle = match.winner !== null
     ? "Game Over"
+    : mode === "online" && online?.status === "waiting" ? "Match will start after accept"
     : !started ? `Starting in ${countdown}…`
     : `Yours: ${myRemaining} • Opponent: ${oppRemaining}`;
 
@@ -404,23 +533,33 @@ export default function StringCarromMatch() {
         </div>
 
         <div className="flex-1 flex items-center justify-center min-h-0 relative">
-          <StringCarromScene
-            ref={apiRef}
-            pucks={match.pucks}
-            turn={0}
-            mySide={mySide}
-            interactive={started && match.winner === null}
-            onSling={handleSling}
-            ghost={ghost}
-          />
-          {!started && match.winner === null && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="rounded-full h-32 w-32 grid place-items-center bg-black/60 border-4 border-primary backdrop-blur-sm">
-                <span className="text-7xl font-black text-primary animate-pulse">
-                  {countdown > 0 ? countdown : "GO!"}
-                </span>
-              </div>
+          {mode === "online" && online?.status === "waiting" ? (
+            <div className="w-full max-w-md rounded-2xl border border-border bg-card px-6 py-10 text-center">
+              <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-primary" />
+              <h2 className="text-xl font-black">Waiting for @{online.opponentName}</h2>
+              <p className="mt-2 text-sm text-muted-foreground">Match accept hote hi game yahin se live start ho jayegi.</p>
             </div>
+          ) : (
+            <>
+              <StringCarromScene
+                ref={apiRef}
+                pucks={match.pucks}
+                turn={0}
+                mySide={mySide}
+                interactive={started && match.winner === null && (mode !== "online" || online?.status === "active")}
+                onSling={handleSling}
+                ghost={ghost}
+              />
+              {!started && match.winner === null && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="rounded-full h-32 w-32 grid place-items-center bg-black/60 border-4 border-primary">
+                    <span className="text-7xl font-black text-primary animate-pulse">
+                      {countdown > 0 ? countdown : "GO!"}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 
