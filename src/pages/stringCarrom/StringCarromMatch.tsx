@@ -279,10 +279,11 @@ export default function StringCarromMatch() {
     };
   }, [mode, diff, started, match.winner, playSound]);
 
-  // ===== Online: load + subscribe (kept simple — turn-less online uses last-write-wins state push) =====
+  // ===== Online: load + subscribe =====
   useEffect(() => {
     if (mode !== "online" || !onlineMatchId || !user) return;
     let cancelled = false;
+
     const init = async () => {
       const { data: m, error } = await supabase
         .from("matches").select("id, host_id, status, bet_amount, state")
@@ -307,14 +308,54 @@ export default function StringCarromMatch() {
         mySide === 0 ? oppName : meName,
         null,
       );
-      setMatch((m.state && (m.state as any).pucks) ? (m.state as any) : startMatch);
+      const initial = (m.state && (m.state as any).pucks)
+        ? mergeIncomingState(startMatch, m.state)
+        : startMatch;
+      setMatch(initial);
       setOnline({ matchId: m.id, mySide, opponentName: oppName, opponentId: opp?.user_id ?? null,
         betAmount: m.bet_amount ?? 0, status: m.status as any });
+      setCountdown(3);
+      setStarted((m.status as OnlineMeta["status"]) === "active");
       setLoadingOnline(false);
     };
     void init();
-    return () => { cancelled = true; };
-  }, [mode, onlineMatchId, user, navigate]);
+
+    const ch = supabase.channel(`string-carrom-${onlineMatchId}`, { config: { broadcast: { self: false } } })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${onlineMatchId}` }, (payload) => {
+        const newRow: any = payload.new;
+        const nextStatus = (newRow.status ?? "waiting") as OnlineMeta["status"];
+        setOnline((prev) => prev ? { ...prev, status: nextStatus } : prev);
+
+        if (nextStatus === "active") {
+          setCountdown(3);
+          setStarted(false);
+        }
+
+        if (newRow.state?.pucks) {
+          const updatedAtMs = newRow.updated_at ? new Date(newRow.updated_at).getTime() : 0;
+          if (updatedAtMs && updatedAtMs <= lastLocalDbWriteAtRef.current) return;
+          lastRemoteStateAtRef.current = updatedAtMs;
+          setMatch((prev) => mergeIncomingState(prev, newRow.state));
+        }
+      })
+      .on("broadcast", { event: "state" }, ({ payload }) => {
+        if (!payload?.state || !payload.state.pucks) return;
+        const at = typeof payload.at === "number" ? payload.at : Date.now();
+        if (at <= lastLocalDbWriteAtRef.current || at <= lastRemoteStateAtRef.current) return;
+        lastRemoteStateAtRef.current = at;
+        setMatch((prev) => mergeIncomingState(prev, payload.state));
+      })
+      .subscribe();
+
+    channelRef.current = ch;
+    return () => {
+      cancelled = true;
+      if (channelRef.current) {
+        void supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [mode, onlineMatchId, user, navigate, mergeIncomingState]);
 
   // Paid bot match: load bet
   useEffect(() => {
