@@ -55,6 +55,11 @@ export default function StringCarromMatch() {
   const [online, setOnline] = useState<OnlineMeta | null>(null);
   const [loadingOnline, setLoadingOnline] = useState(mode === "online");
   const finalizingRef = useRef(false);
+  const channelRef = useRef<any>(null);
+  const lastBroadcastAtRef = useRef(0);
+  const lastPersistAtRef = useRef(0);
+  const lastLocalDbWriteAtRef = useRef(0);
+  const lastRemoteStateAtRef = useRef(0);
 
   // Auto-win if opponent disconnects for 15s+ (refresh-tolerant)
   useMatchPresence({
@@ -73,12 +78,44 @@ export default function StringCarromMatch() {
   const [countdown, setCountdown] = useState(3);
   const [started, setStarted] = useState(false);
 
+  const toSyncedState = useCallback((source: MatchState) => (
+    JSON.parse(JSON.stringify({
+      pucks: source.pucks,
+      discs: source.pucks,
+      striker: source.striker,
+      turn: source.turn,
+      message: source.message,
+      winner: source.winner,
+      shotInProgress: source.shotInProgress,
+      lastFoul: source.lastFoul,
+    })) as MatchState
+  ), []);
+
+  const mergeIncomingState = useCallback((base: MatchState, incoming: any): MatchState => {
+    if (!incoming || !Array.isArray(incoming.pucks)) return base;
+    const pucks = incoming.pucks as MatchState["pucks"];
+    return {
+      ...base,
+      ...incoming,
+      players: base.players,
+      pucks,
+      discs: pucks,
+      striker: incoming.striker ?? base.striker,
+      turn: base.turn,
+      message: incoming.message ?? base.message,
+      winner: incoming.winner ?? null,
+      shotInProgress: incoming.shotInProgress ?? base.shotInProgress,
+      lastFoul: incoming.lastFoul ?? base.lastFoul,
+    };
+  }, []);
+
   useEffect(() => {
+    if (mode === "online") return;
     if (started) return;
     if (countdown <= 0) { setStarted(true); return; }
     const t = setTimeout(() => setCountdown(c => c - 1), 1000);
     return () => clearTimeout(t);
-  }, [countdown, started]);
+  }, [countdown, started, mode]);
 
   // ===== Continuous physics loop (visible animation) =====
   // Runs at ~60fps. Each frame, advances physics one step on the live puck array
@@ -88,6 +125,32 @@ export default function StringCarromMatch() {
     if (match.winner !== null) return;
     let raf = 0;
     let lastSoundT = 0;
+    const syncOnlineState = (snapshot: MatchState, forcePersist = false) => {
+      if (mode !== "online" || !online || online.status !== "active" || !channelRef.current) return;
+      const now = performance.now();
+      const synced = toSyncedState(snapshot);
+      const sentAt = Date.now();
+
+      if (now - lastBroadcastAtRef.current > 50) {
+        lastBroadcastAtRef.current = now;
+        lastRemoteStateAtRef.current = sentAt;
+        void channelRef.current.send({
+          type: "broadcast",
+          event: "state",
+          payload: { at: sentAt, state: synced },
+        });
+      }
+
+      if (forcePersist || now - lastPersistAtRef.current > 250) {
+        lastPersistAtRef.current = now;
+        lastLocalDbWriteAtRef.current = sentAt;
+        void supabase
+          .from("matches")
+          .update({ state: synced as any, updated_at: new Date(sentAt).toISOString() })
+          .eq("id", online.matchId);
+      }
+    };
+
     const tick = () => {
       const m = matchRef.current;
       // Snapshot speeds before stepping (to detect collision impacts for sound).
@@ -106,12 +169,27 @@ export default function StringCarromMatch() {
       }
       // Force a re-render so the canvas redraws with new puck positions.
       // We mutate-and-assign to keep the same reference but a new top-level object.
-      setMatch(prev => ({ ...prev, pucks: prev.pucks }));
+      setMatch(prev => ({ ...prev, pucks: prev.pucks, discs: prev.pucks }));
+
+      if (mode === "online" && online?.status === "active") {
+        syncOnlineState(m, !moving);
+      }
 
       // Win check.
       const w = checkWinner(m);
       if (w !== null) {
-        setMatch(prev => ({ ...prev, winner: w, message: `${prev.players[w].name} wins!` }));
+        const finalState = { ...m, winner: w, message: `${m.players[w].name} wins!`, discs: m.pucks };
+        setMatch(prev => ({ ...prev, winner: w, message: `${prev.players[w].name} wins!`, discs: prev.pucks }));
+        if (mode === "online" && online && online.status !== "finished" && !finalizingRef.current) {
+          syncOnlineState(finalState, true);
+          finalizingRef.current = true;
+          const winnerUserId = w === online.mySide ? user?.id ?? null : online.opponentId;
+          if (winnerUserId) {
+            void supabase
+              .rpc("finalize_match", { _match_id: online.matchId, _winner_id: winnerUserId })
+              .then(() => refreshProfile());
+          }
+        }
         return;
       }
       raf = requestAnimationFrame(tick);
@@ -120,7 +198,7 @@ export default function StringCarromMatch() {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [started, match.winner, playSound]);
+  }, [started, match.winner, playSound, mode, online, refreshProfile, toSyncedState, user?.id]);
 
   // ===== Bot loop — fires shots on a cooldown while it still has pucks on its half =====
   useEffect(() => {
