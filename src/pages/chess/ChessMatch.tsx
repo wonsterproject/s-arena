@@ -53,6 +53,7 @@ export default function ChessMatch() {
   const [paidBotBet, setPaidBotBet] = useState<number>(0);
   const paidBotFinalizedRef = useRef(false);
   const [botDisplayName, setBotDisplayName] = useState<string>(`CPU (${difficulty})`);
+  const [isFakeUserMatch, setIsFakeUserMatch] = useState(false);
 
   // Load paid bot bet
   useEffect(() => {
@@ -67,6 +68,7 @@ export default function ChessMatch() {
         if (fake?.display_name) {
           setDifficulty("hard"); // Fake-user matches always face top-tier bot.
           setBotDisplayName(fake.display_name);
+          setIsFakeUserMatch(true);
         }
       }
     })();
@@ -197,8 +199,11 @@ export default function ChessMatch() {
       if (mode === "bot" && paidBotBet > 0 && onlineMatchId && user && !paidBotFinalizedRef.current) {
         paidBotFinalizedRef.current = true;
         const humanWon = winnerColor === playerColor;
-        supabase.rpc("finalize_match", {
-          _match_id: onlineMatchId, _winner_id: humanWon ? user.id : null,
+        void finalizePaidBotMatch({
+          matchId: onlineMatchId,
+          humanUserId: user.id,
+          humanWon,
+          isFakeUserMatch,
         }).then(() => refreshProfile());
       }
     } else if (status === "stalemate") setGameOver("Stalemate — Draw");
