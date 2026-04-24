@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMatchPresence } from "@/hooks/useMatchPresence";
 import { toast } from "@/hooks/use-toast";
+import { finalizePaidBotMatch } from "@/game/finalizePaidBotMatch";
 
 type Mode = "bot" | "local" | "online";
 
