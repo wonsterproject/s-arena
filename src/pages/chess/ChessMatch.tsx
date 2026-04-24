@@ -211,7 +211,7 @@ export default function ChessMatch() {
     else if (status === "draw-50") setGameOver("50-move rule — Draw");
     else if (status === "draw-3fold") setGameOver("Threefold repetition — Draw");
     else if (status === "draw-material") setGameOver("Insufficient material — Draw");
-  }, [status, state.turn, mode, online, user, refreshProfile, paidBotBet, onlineMatchId, playerColor]);
+  }, [status, state.turn, mode, online, user, refreshProfile, paidBotBet, onlineMatchId, playerColor, isFakeUserMatch]);
 
   // Bot move (bot mode only)
   const botRunRef = useRef(false);
