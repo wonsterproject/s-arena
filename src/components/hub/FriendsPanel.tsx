@@ -172,10 +172,10 @@ export default function FriendsPanel() {
                   {initials(r.profile?.username)}
                 </div>
                 <p className="flex-1 text-sm font-semibold truncate">@{r.profile?.username ?? "?"}</p>
-                <button onClick={() => respond(r.id, true)} className="glass-btn h-8 w-8 flex items-center justify-center text-green-400">
+                <button onClick={() => respond(r.id, true)} className="glass-btn h-8 w-8 flex items-center justify-center text-emerald-400">
                   <Check className="h-4 w-4" />
                 </button>
-                <button onClick={() => respond(r.id, false)} className="glass-btn h-8 w-8 flex items-center justify-center text-red-400">
+                <button onClick={() => respond(r.id, false)} className="glass-btn h-8 w-8 flex items-center justify-center text-destructive">
                   <X className="h-4 w-4" />
                 </button>
               </div>
