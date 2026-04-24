@@ -57,6 +57,15 @@ export default function ArenaMatch() {
   const [paidBotBet, setPaidBotBet] = useState<number>(0);
   const paidBotFinalizedRef = useRef(false);
 
+  // Auto-win if opponent disconnects for 15s+ (refresh-tolerant)
+  useMatchPresence({
+    matchId: online?.matchId ?? null,
+    userId: user?.id ?? null,
+    opponentId: online?.opponentId ?? null,
+    active: mode === "online" && online?.status === "active",
+    onWin: () => refreshProfile(),
+  });
+
   // Load paid bot match bet + fake opponent persona
   useEffect(() => {
     if (mode !== "bot" || !onlineMatchId || !user) return;
