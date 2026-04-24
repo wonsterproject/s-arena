@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import CoinsPanel from "@/components/shop/CoinsPanel";
+import WhatsAppFloat from "@/components/WhatsAppFloat";
 
 interface ShopItem {
   id: string;
@@ -155,6 +156,7 @@ export default function Shop() {
           </div>
         )}
       </section>
+      <WhatsAppFloat />
     </main>
   );
 }
