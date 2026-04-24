@@ -202,7 +202,9 @@ export default function PoolMatch() {
             setMatch(ns);
             setAnimBalls(ns.balls.map(b => ({ ...b })));
           }
-          if (newRow.status === "finished") setOnline(p => p ? { ...p, status: "finished" } : p);
+          if (newRow.status) {
+            setOnline(p => p ? { ...p, status: newRow.status as OnlineMeta["status"] } : p);
+          }
         }).subscribe();
     return () => { cancelled = true; supabase.removeChannel(ch); };
   }, [mode, onlineMatchId, user, navigate]);
