@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Swords, Check, X, Loader2, Coins, Dice5, Crown, Circle, Target, Crosshair, Zap } from "lucide-react";
+import { Swords, Check, Loader2, Coins, Dice5, Crown, Circle, Target, Crosshair, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
@@ -13,8 +13,11 @@ interface MatchInvite {
   mode: "1v1" | "2v2" | string;
   game_type: GameType;
   bet_amount: number;
+  created_at: string;
   profile: { username: string; display_name: string | null } | null;
 }
+
+const INVITE_TTL_MS = 50_000;
 
 const GAME_META: Record<GameType, { label: string; icon: React.ReactNode }> = {
   ludo: { label: "Ludo", icon: <Dice5 className="h-4 w-4" /> },
@@ -36,20 +39,24 @@ export default function MatchInvitesPanel() {
     const { data } = await supabase
       .from("match_invites")
       .select(
-        "id, match_id, from_user, mode, status, profile:from_user ( username, display_name ), match:matches!match_invites_match_id_fkey ( game_type, bet_amount )"
+        "id, match_id, from_user, mode, status, created_at, profile:from_user ( username, display_name ), match:matches!match_invites_match_id_fkey ( game_type, bet_amount )"
       )
       .eq("to_user", user.id)
       .eq("status", "pending")
       .order("created_at", { ascending: false });
-    const mapped: MatchInvite[] = ((data ?? []) as any[]).map((r) => ({
-      id: r.id,
-      match_id: r.match_id,
-      from_user: r.from_user,
-      mode: r.mode,
-      profile: r.profile,
-      game_type: (r.match?.game_type ?? "ludo") as GameType,
-      bet_amount: r.match?.bet_amount ?? 0,
-    }));
+    const cutoff = Date.now() - INVITE_TTL_MS;
+    const mapped: MatchInvite[] = ((data ?? []) as any[])
+      .filter((r) => new Date(r.created_at).getTime() >= cutoff)
+      .map((r) => ({
+        id: r.id,
+        match_id: r.match_id,
+        from_user: r.from_user,
+        mode: r.mode,
+        profile: r.profile,
+        created_at: r.created_at,
+        game_type: (r.match?.game_type ?? "ludo") as GameType,
+        bet_amount: r.match?.bet_amount ?? 0,
+      }));
     setInvites(mapped);
   }, [user]);
 
@@ -64,7 +71,18 @@ export default function MatchInvitesPanel() {
         () => load(),
       )
       .subscribe();
-    return () => { void supabase.removeChannel(ch); };
+    // Re-evaluate every second so invites disappear right at the 50-second mark
+    const tick = setInterval(() => {
+      setInvites((prev) => {
+        const cutoff = Date.now() - INVITE_TTL_MS;
+        const next = prev.filter((i) => new Date(i.created_at).getTime() >= cutoff);
+        return next.length === prev.length ? prev : next;
+      });
+    }, 1000);
+    return () => {
+      void supabase.removeChannel(ch);
+      clearInterval(tick);
+    };
   }, [user?.id, load]);
 
   const accept = async (inv: MatchInvite) => {
@@ -82,14 +100,9 @@ export default function MatchInvitesPanel() {
     }
   };
 
-  const decline = async (inv: MatchInvite) => {
-    if (busyId) return;
-    setBusyId(inv.id);
-    const { error } = await supabase.from("match_invites").update({ status: "declined" }).eq("id", inv.id);
-    setBusyId(null);
-    if (error) toast({ title: "Could not decline", description: error.message, variant: "destructive" });
-    else { toast({ title: "Invite declined" }); void load(); }
-  };
+  // Compute remaining seconds for each invite (50s TTL)
+  const remaining = (inv: MatchInvite) =>
+    Math.max(0, Math.ceil((INVITE_TTL_MS - (Date.now() - new Date(inv.created_at).getTime())) / 1000));
 
   if (invites.length === 0) return null;
 
@@ -106,7 +119,6 @@ export default function MatchInvitesPanel() {
       <div className="space-y-2">
         {invites.map((inv) => {
           const meta = GAME_META[inv.game_type] ?? GAME_META.ludo;
-          const name = inv.profile?.display_name || inv.profile?.username || "Player";
           return (
             <div key={inv.id} className="flex items-center gap-2 rounded-xl bg-secondary/40 p-2.5">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary/40 to-accent/40">
@@ -123,23 +135,16 @@ export default function MatchInvitesPanel() {
                       <Coins className="h-3 w-3 text-yellow-400" /> {inv.bet_amount}
                     </span>
                   )}
+                  <span className="ml-auto font-bold text-yellow-300">{remaining(inv)}s</span>
                 </p>
               </div>
               <button
                 onClick={() => accept(inv)}
                 disabled={busyId === inv.id}
-                className="glass-btn h-9 w-9 flex items-center justify-center text-emerald-400 disabled:opacity-50"
+                className="glass-btn h-9 px-3 flex items-center gap-1 text-emerald-400 disabled:opacity-50 font-bold"
                 title="Accept"
               >
-                {busyId === inv.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-              </button>
-              <button
-                onClick={() => decline(inv)}
-                disabled={busyId === inv.id}
-                className="glass-btn h-9 w-9 flex items-center justify-center text-destructive disabled:opacity-50"
-                title="Decline"
-              >
-                <X className="h-4 w-4" />
+                {busyId === inv.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4" /> Accept</>}
               </button>
             </div>
           );
