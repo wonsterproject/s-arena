@@ -150,9 +150,12 @@ export default function Hub() {
           ))}
         </section>
 
-        {/* Referral + Online Players */}
-        <section className="grid lg:grid-cols-2 gap-4 mb-10">
+        {/* Friends + Referral + Online Players */}
+        <section className="grid lg:grid-cols-2 gap-4 mb-4">
+          <FriendsPanel />
           <ReferralCard />
+        </section>
+        <section className="mb-10">
           <OnlinePlayersPanel />
         </section>
 
