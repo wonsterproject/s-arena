@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMatchPresence } from "@/hooks/useMatchPresence";
 import { toast } from "@/hooks/use-toast";
+import { finalizePaidBotMatch } from "@/game/finalizePaidBotMatch";
 
 type Mode = "bot" | "local" | "online";
 
@@ -64,6 +65,7 @@ export default function StringCarromMatch() {
     onWin: () => refreshProfile(),
   });
   const [paidBotBet, setPaidBotBet] = useState<number>(0);
+  const [isFakeUserMatch, setIsFakeUserMatch] = useState(false);
   const paidBotFinalizedRef = useRef(false);
   const [ghost, setGhost] = useState<React.ComponentProps<typeof StringCarromScene>["ghost"]>(null);
 
@@ -250,6 +252,7 @@ export default function StringCarromMatch() {
           // Force HARD difficulty for any fake-user match — these bots must feel like top players.
           setDiff("hard");
           setBotDisplayName(fake.display_name);
+          setIsFakeUserMatch(true);
           setMatch(prev => {
             const next: MatchState = JSON.parse(JSON.stringify(prev));
             next.players[1].name = fake.display_name;
@@ -264,11 +267,14 @@ export default function StringCarromMatch() {
     if (paidBotFinalizedRef.current || mode !== "bot" || !onlineMatchId || !user || paidBotBet <= 0) return;
     if (onlineMatchId.startsWith("local-")) return;
     paidBotFinalizedRef.current = true;
-    const { error } = await supabase.rpc("finalize_match", {
-      _match_id: onlineMatchId, _winner_id: humanWon ? user.id : null,
+    const { error } = await finalizePaidBotMatch({
+      matchId: onlineMatchId,
+      humanUserId: user.id,
+      humanWon,
+      isFakeUserMatch,
     });
     if (!error) await refreshProfile();
-  }, [mode, onlineMatchId, user, paidBotBet, refreshProfile]);
+  }, [mode, onlineMatchId, user, paidBotBet, refreshProfile, isFakeUserMatch]);
 
   // On winner: play sound + finalize paid bot.
   useEffect(() => {

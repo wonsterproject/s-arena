@@ -13,6 +13,7 @@ import LandscapeGate from "@/components/pool/LandscapeGate";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMatchPresence } from "@/hooks/useMatchPresence";
+import { finalizePaidBotMatch } from "@/game/finalizePaidBotMatch";
 import { toast } from "@/hooks/use-toast";
 
 type Mode = "bot" | "local" | "online";
@@ -128,6 +129,7 @@ export default function PoolMatch() {
 
   // Paid bot match support: lock-in bet so winner gets 2x via finalize_match
   const [paidBotBet, setPaidBotBet] = useState<number>(0);
+  const [isFakeUserMatch, setIsFakeUserMatch] = useState(false);
   const paidBotFinalizedRef = useRef(false);
 
   const [tableSize, setTableSize] = useState({ w: 800, h: 400 });
@@ -226,6 +228,7 @@ export default function PoolMatch() {
         if (fake?.display_name) {
           setDiff("hard"); // Fake-user matches always face top-tier bot.
           setBotDisplayName(fake.display_name);
+          setIsFakeUserMatch(true);
           setMatch(prev => {
             const next: MatchState = JSON.parse(JSON.stringify(prev));
             next.players[1].name = fake.display_name;
@@ -242,12 +245,14 @@ export default function PoolMatch() {
     if (mode !== "bot" || !onlineMatchId || !user || paidBotBet <= 0) return;
     if (onlineMatchId.startsWith("local-")) return;
     paidBotFinalizedRef.current = true;
-    const { error } = await supabase.rpc("finalize_match", {
-      _match_id: onlineMatchId,
-      _winner_id: humanWon ? user.id : null,
+    const { error } = await finalizePaidBotMatch({
+      matchId: onlineMatchId,
+      humanUserId: user.id,
+      humanWon,
+      isFakeUserMatch,
     });
     if (!error) await refreshProfile();
-  }, [mode, onlineMatchId, user, paidBotBet, refreshProfile]);
+  }, [mode, onlineMatchId, user, paidBotBet, refreshProfile, isFakeUserMatch]);
 
   useEffect(() => {
     if (!shooting) setAnimBalls(match.balls.map(b => ({ ...b })));

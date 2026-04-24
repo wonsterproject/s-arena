@@ -8,6 +8,7 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMatchPresence } from "@/hooks/useMatchPresence";
+import { finalizePaidBotMatch } from "@/game/finalizePaidBotMatch";
 
 type Mode = "bot" | "local" | "online";
 
@@ -53,6 +54,7 @@ export default function ChessMatch() {
   const [paidBotBet, setPaidBotBet] = useState<number>(0);
   const paidBotFinalizedRef = useRef(false);
   const [botDisplayName, setBotDisplayName] = useState<string>(`CPU (${difficulty})`);
+  const [isFakeUserMatch, setIsFakeUserMatch] = useState(false);
 
   // Load paid bot bet
   useEffect(() => {
@@ -67,6 +69,7 @@ export default function ChessMatch() {
         if (fake?.display_name) {
           setDifficulty("hard"); // Fake-user matches always face top-tier bot.
           setBotDisplayName(fake.display_name);
+          setIsFakeUserMatch(true);
         }
       }
     })();
@@ -197,15 +200,18 @@ export default function ChessMatch() {
       if (mode === "bot" && paidBotBet > 0 && onlineMatchId && user && !paidBotFinalizedRef.current) {
         paidBotFinalizedRef.current = true;
         const humanWon = winnerColor === playerColor;
-        supabase.rpc("finalize_match", {
-          _match_id: onlineMatchId, _winner_id: humanWon ? user.id : null,
+        void finalizePaidBotMatch({
+          matchId: onlineMatchId,
+          humanUserId: user.id,
+          humanWon,
+          isFakeUserMatch,
         }).then(() => refreshProfile());
       }
     } else if (status === "stalemate") setGameOver("Stalemate — Draw");
     else if (status === "draw-50") setGameOver("50-move rule — Draw");
     else if (status === "draw-3fold") setGameOver("Threefold repetition — Draw");
     else if (status === "draw-material") setGameOver("Insufficient material — Draw");
-  }, [status, state.turn, mode, online, user, refreshProfile, paidBotBet, onlineMatchId, playerColor]);
+  }, [status, state.turn, mode, online, user, refreshProfile, paidBotBet, onlineMatchId, playerColor, isFakeUserMatch]);
 
   // Bot move (bot mode only)
   const botRunRef = useRef(false);

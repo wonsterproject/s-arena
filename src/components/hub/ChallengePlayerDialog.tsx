@@ -78,10 +78,36 @@ export default function ChallengePlayerDialog({ open, onClose, opponent }: Props
       return;
     }
     cancelledRef.current = false;
+
+    // REAL player → send friend-style invite immediately, navigate host to waiting room.
+    if (!opponent.is_fake) {
+      try {
+        const { data: matchId, error } = await supabase.rpc("create_friend_match", {
+          _mode: "1v1",
+          _opponent: opponent.id,
+          _bet: bet,
+          _game: game as never,
+        });
+        if (error) throw error;
+        if (matchId) {
+          toast({
+            title: "Challenge sent!",
+            description: `Waiting for ${opponentName} to accept · ${bet} coins locked`,
+          });
+          await refreshProfile();
+          onClose();
+          navigate(gameRoute(game, matchId as string, "online"));
+        }
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Try again";
+        toast({ title: "Failed to send challenge", description: message, variant: "destructive" });
+      }
+      return;
+    }
+
+    // FAKE user → cinematic 10s countdown, then start a hard-bot match using the persona.
     setStep("waiting");
     setCountdown(COUNTDOWN_SECONDS);
-
-    // Tick countdown
     const startedAt = Date.now();
     const tick = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startedAt) / 1000);
@@ -91,44 +117,22 @@ export default function ChallengePlayerDialog({ open, onClose, opponent }: Props
     }, 200);
 
     try {
-      // Wait full 10s for the cinematic feel
       await new Promise((r) => setTimeout(r, COUNTDOWN_SECONDS * 1000));
       if (cancelledRef.current) {
         clearInterval(tick);
         return;
       }
-
-      // Create match against the opponent (fake user → bot match with their persona)
-      if (opponent.is_fake) {
-        const { data: matchId, error } = await supabase.rpc("start_match_with_fake_user", {
-          _fake_user_id: opponent.id,
-          _game: game as never,
-          _bet: bet,
-        });
-        if (error) throw error;
-        if (matchId) {
-          await refreshProfile();
-          clearInterval(tick);
-          onClose();
-          navigate(gameRoute(game, matchId as string, "bot"));
-          return;
-        }
-      } else {
-        // Real player: send a friend-style match invite
-        const { data: matchId, error } = await supabase.rpc("create_friend_match", {
-          _mode: "1v1",
-          _opponent: opponent.id,
-          _bet: bet,
-          _game: game as never,
-        });
-        if (error) throw error;
-        if (matchId) {
-          await refreshProfile();
-          clearInterval(tick);
-          onClose();
-          navigate(gameRoute(game, matchId as string));
-          return;
-        }
+      const { data: matchId, error } = await supabase.rpc("start_match_with_fake_user", {
+        _fake_user_id: opponent.id,
+        _game: game as never,
+        _bet: bet,
+      });
+      if (error) throw error;
+      if (matchId) {
+        await refreshProfile();
+        clearInterval(tick);
+        onClose();
+        navigate(gameRoute(game, matchId as string, "bot"));
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Try again";
