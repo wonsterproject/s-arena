@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, forwardRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LogOut, Settings, Coins, Trophy, UserPlus, Users, Bot, Shuffle, Swords,
@@ -548,10 +548,9 @@ function TabBtn({ active, onClick, icon, label }: { active: boolean; onClick: ()
 interface ModeCardProps {
   title: string; desc: string; icon: React.ReactNode; gradient: string; onClick: () => void; loading?: boolean;
 }
-const ModeCard = forwardRef<HTMLButtonElement, ModeCardProps>(({ title, desc, icon, gradient, onClick, loading }, ref) => {
+function ModeCard({ title, desc, icon, gradient, onClick, loading }: ModeCardProps) {
   return (
     <button
-      ref={ref}
       onClick={onClick}
       disabled={loading}
       className={`glass relative overflow-hidden rounded-2xl p-5 text-left transition-all hover:scale-[1.02] hover:neon-border bg-gradient-to-br ${gradient} disabled:opacity-60`}
@@ -565,8 +564,7 @@ const ModeCard = forwardRef<HTMLButtonElement, ModeCardProps>(({ title, desc, ic
       <p className="text-xs text-muted-foreground mt-1">{desc}</p>
     </button>
   );
-});
-ModeCard.displayName = "ModeCard";
+}
 
 function LobbyAnimatedBg() {
   const colors = ["hsl(var(--red))", "hsl(var(--blue))", "hsl(var(--green))", "hsl(var(--yellow))"];
