@@ -156,6 +156,7 @@ export default function Shop() {
           </div>
         )}
       </section>
+      <WhatsAppFloat />
     </main>
   );
 }
