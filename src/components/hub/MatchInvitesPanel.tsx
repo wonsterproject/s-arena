@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Swords, Check, X, Loader2, Coins, Dice5, Crown, Circle, Target, Crosshair, Zap } from "lucide-react";
+import { Swords, Check, Loader2, Coins, Dice5, Crown, Circle, Target, Crosshair, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
