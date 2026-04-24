@@ -162,8 +162,8 @@ export default function ChessMatch() {
           if (newRow.state && newRow.state.board) {
             setState(newRow.state as GameState);
           }
-          if (newRow.status === "finished") {
-            setOnline((p) => p ? { ...p, status: "finished" } : p);
+          if (newRow.status) {
+            setOnline((p) => p ? { ...p, status: newRow.status as OnlineMeta["status"] } : p);
           }
         },
       )
