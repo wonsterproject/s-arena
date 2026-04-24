@@ -110,12 +110,12 @@ export default function StringCarromMatch() {
   }, []);
 
   useEffect(() => {
-    if (mode === "online") return;
+    if (mode === "online" && online?.status !== "active") return;
     if (started) return;
     if (countdown <= 0) { setStarted(true); return; }
     const t = setTimeout(() => setCountdown(c => c - 1), 1000);
     return () => clearTimeout(t);
-  }, [countdown, started, mode]);
+  }, [countdown, started, mode, online?.status]);
 
   // ===== Continuous physics loop (visible animation) =====
   // Runs at ~60fps. Each frame, advances physics one step on the live puck array
