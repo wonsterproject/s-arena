@@ -533,23 +533,33 @@ export default function StringCarromMatch() {
         </div>
 
         <div className="flex-1 flex items-center justify-center min-h-0 relative">
-          <StringCarromScene
-            ref={apiRef}
-            pucks={match.pucks}
-            turn={0}
-            mySide={mySide}
-            interactive={started && match.winner === null}
-            onSling={handleSling}
-            ghost={ghost}
-          />
-          {!started && match.winner === null && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="rounded-full h-32 w-32 grid place-items-center bg-black/60 border-4 border-primary backdrop-blur-sm">
-                <span className="text-7xl font-black text-primary animate-pulse">
-                  {countdown > 0 ? countdown : "GO!"}
-                </span>
-              </div>
+          {mode === "online" && online?.status === "waiting" ? (
+            <div className="w-full max-w-md rounded-2xl border border-border bg-card px-6 py-10 text-center">
+              <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-primary" />
+              <h2 className="text-xl font-black">Waiting for @{online.opponentName}</h2>
+              <p className="mt-2 text-sm text-muted-foreground">Match accept hote hi game yahin se live start ho jayegi.</p>
             </div>
+          ) : (
+            <>
+              <StringCarromScene
+                ref={apiRef}
+                pucks={match.pucks}
+                turn={0}
+                mySide={mySide}
+                interactive={started && match.winner === null && (mode !== "online" || online?.status === "active")}
+                onSling={handleSling}
+                ghost={ghost}
+              />
+              {!started && match.winner === null && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="rounded-full h-32 w-32 grid place-items-center bg-black/60 border-4 border-primary">
+                    <span className="text-7xl font-black text-primary animate-pulse">
+                      {countdown > 0 ? countdown : "GO!"}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 
