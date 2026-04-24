@@ -136,23 +136,16 @@ export default function MatchInvitesPanel() {
                       <Coins className="h-3 w-3 text-yellow-400" /> {inv.bet_amount}
                     </span>
                   )}
+                  <span className="ml-auto font-bold text-yellow-300">{remaining(inv)}s</span>
                 </p>
               </div>
               <button
                 onClick={() => accept(inv)}
                 disabled={busyId === inv.id}
-                className="glass-btn h-9 w-9 flex items-center justify-center text-emerald-400 disabled:opacity-50"
+                className="glass-btn h-9 px-3 flex items-center gap-1 text-emerald-400 disabled:opacity-50 font-bold"
                 title="Accept"
               >
-                {busyId === inv.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-              </button>
-              <button
-                onClick={() => decline(inv)}
-                disabled={busyId === inv.id}
-                className="glass-btn h-9 w-9 flex items-center justify-center text-destructive disabled:opacity-50"
-                title="Decline"
-              >
-                <X className="h-4 w-4" />
+                {busyId === inv.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4" /> Accept</>}
               </button>
             </div>
           );
