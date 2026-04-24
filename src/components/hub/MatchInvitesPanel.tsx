@@ -100,14 +100,9 @@ export default function MatchInvitesPanel() {
     }
   };
 
-  const decline = async (inv: MatchInvite) => {
-    if (busyId) return;
-    setBusyId(inv.id);
-    const { error } = await supabase.from("match_invites").update({ status: "declined" }).eq("id", inv.id);
-    setBusyId(null);
-    if (error) toast({ title: "Could not decline", description: error.message, variant: "destructive" });
-    else { toast({ title: "Invite declined" }); void load(); }
-  };
+  // Compute remaining seconds for each invite (50s TTL)
+  const remaining = (inv: MatchInvite) =>
+    Math.max(0, Math.ceil((INVITE_TTL_MS - (Date.now() - new Date(inv.created_at).getTime())) / 1000));
 
   if (invites.length === 0) return null;
 
