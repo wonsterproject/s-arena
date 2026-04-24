@@ -71,7 +71,18 @@ export default function MatchInvitesPanel() {
         () => load(),
       )
       .subscribe();
-    return () => { void supabase.removeChannel(ch); };
+    // Re-evaluate every second so invites disappear right at the 50-second mark
+    const tick = setInterval(() => {
+      setInvites((prev) => {
+        const cutoff = Date.now() - INVITE_TTL_MS;
+        const next = prev.filter((i) => new Date(i.created_at).getTime() >= cutoff);
+        return next.length === prev.length ? prev : next;
+      });
+    }, 1000);
+    return () => {
+      void supabase.removeChannel(ch);
+      clearInterval(tick);
+    };
   }, [user?.id, load]);
 
   const accept = async (inv: MatchInvite) => {
