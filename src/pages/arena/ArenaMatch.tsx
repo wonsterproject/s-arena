@@ -13,6 +13,7 @@ import {
 } from "@/game/arena/engine";
 import { botStep, type Diff } from "@/game/arena/bot";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { finalizePaidBotMatch } from "@/game/finalizePaidBotMatch";
 import { toast } from "@/hooks/use-toast";
 
 type Mode = "bot" | "online";
@@ -55,6 +56,7 @@ export default function ArenaMatch() {
   const lastBroadcastRef = useRef(0);
   const finalizingRef = useRef(false);
   const [paidBotBet, setPaidBotBet] = useState<number>(0);
+  const [isFakeUserMatch, setIsFakeUserMatch] = useState(false);
   const paidBotFinalizedRef = useRef(false);
 
   // Auto-win if opponent disconnects for 15s+ (refresh-tolerant)
@@ -77,6 +79,7 @@ export default function ArenaMatch() {
         const fake = (m.state as any)?.fake_opponent;
         if (fake?.display_name) {
           setDiff("hard"); // Fake-user matches always face top-tier bot.
+          setIsFakeUserMatch(true);
           stateRef.current.entities[1].name = fake.display_name;
         }
       }
@@ -314,12 +317,15 @@ export default function ArenaMatch() {
           // Paid bot match: finalize via RPC (server awards 2x to human if won)
           paidBotFinalizedRef.current = true;
           (async () => {
-            await supabase.rpc("finalize_match", {
-              _match_id: onlineMatchId, _winner_id: won ? user!.id : null,
+            const { humanWonFinal } = await finalizePaidBotMatch({
+              matchId: onlineMatchId,
+              humanUserId: user!.id,
+              humanWon: won,
+              isFakeUserMatch,
             });
             await refreshProfile();
+            setEndResult({ won: humanWonFinal, coins: humanWonFinal ? paidBotBet * 2 : 0 });
           })();
-          setEndResult({ won, coins: won ? paidBotBet * 2 : 0 });
         } else {
           const reward = won ? 50 : 0;
           if (won && profile) {
