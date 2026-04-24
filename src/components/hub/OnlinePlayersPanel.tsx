@@ -107,6 +107,9 @@ export default function OnlinePlayersPanel({ game: _game = "ludo" }: Props) {
               </div>
             </div>
             <div className="flex items-center gap-1.5 flex-shrink-0">
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${u.is_fake ? "bg-primary/15 text-primary" : "bg-accent/15 text-accent"}`}>
+                {u.is_fake ? "Bot" : "Live"}
+              </span>
               <span className="text-[10px] uppercase font-bold text-emerald-400">{timeAgo(u.last_seen_at)}</span>
               <button
                 onClick={() => openChallenge(u)}

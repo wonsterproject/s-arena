@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, forwardRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LogOut, Settings, Coins, Trophy, UserPlus, Users, Bot, Shuffle, Swords,
@@ -548,16 +548,15 @@ function TabBtn({ active, onClick, icon, label }: { active: boolean; onClick: ()
 interface ModeCardProps {
   title: string; desc: string; icon: React.ReactNode; gradient: string; onClick: () => void; loading?: boolean;
 }
-const ModeCard = forwardRef<HTMLButtonElement, ModeCardProps>(({ title, desc, icon, gradient, onClick, loading }, ref) => {
+function ModeCard({ title, desc, icon, gradient, onClick, loading }: ModeCardProps) {
   return (
     <button
-      ref={ref}
       onClick={onClick}
       disabled={loading}
       className={`glass relative overflow-hidden rounded-2xl p-5 text-left transition-all hover:scale-[1.02] hover:neon-border bg-gradient-to-br ${gradient} disabled:opacity-60`}
     >
       <div className="flex items-center justify-between mb-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-background/40 backdrop-blur">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-background/60">
           {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : icon}
         </div>
       </div>
@@ -565,8 +564,7 @@ const ModeCard = forwardRef<HTMLButtonElement, ModeCardProps>(({ title, desc, ic
       <p className="text-xs text-muted-foreground mt-1">{desc}</p>
     </button>
   );
-});
-ModeCard.displayName = "ModeCard";
+}
 
 function LobbyAnimatedBg() {
   const colors = ["hsl(var(--red))", "hsl(var(--blue))", "hsl(var(--green))", "hsl(var(--yellow))"];

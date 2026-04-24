@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Users, Swords, Loader2, UserPlus } from "lucide-react";
 import { useFriendInvite, type GameType } from "@/hooks/useFriendInvite";
 import BetDialog from "@/components/lobby/BetDialog";
+import MatchInvitesPanel from "@/components/hub/MatchInvitesPanel";
 
 interface Props {
   game: GameType;
@@ -20,6 +21,8 @@ export default function FriendsInvitePanel({ game, gameLabel, show2v2 = false }:
 
   return (
     <div>
+      <MatchInvitesPanel />
+
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
           Play with Friends · Bet coins (min 50)
