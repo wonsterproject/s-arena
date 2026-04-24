@@ -10,6 +10,7 @@ import GameTopBar from "@/components/game/GameTopBar";
 import { useCarromSounds } from "@/game/carrom/useCarromSounds";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useMatchPresence } from "@/hooks/useMatchPresence";
 import { toast } from "@/hooks/use-toast";
 
 type Mode = "bot" | "local" | "online";
@@ -51,6 +52,15 @@ export default function CarromMatch() {
   const [online, setOnline] = useState<OnlineMeta | null>(null);
   const [loadingOnline, setLoadingOnline] = useState(mode === "online");
   const finalizingRef = useRef(false);
+
+  // Auto-win if opponent disconnects for 15s+ (refresh-tolerant)
+  useMatchPresence({
+    matchId: online?.matchId ?? null,
+    userId: user?.id ?? null,
+    opponentId: online?.opponentId ?? null,
+    active: mode === "online" && online?.status === "active",
+    onWin: () => refreshProfile(),
+  });
   const skipNextPushRef = useRef(false);
   const [paidBotBet, setPaidBotBet] = useState<number>(0);
   const paidBotFinalizedRef = useRef(false);

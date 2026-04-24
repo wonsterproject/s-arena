@@ -12,6 +12,7 @@ import VerticalPowerStrip from "@/components/game/VerticalPowerStrip";
 import LandscapeGate from "@/components/pool/LandscapeGate";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useMatchPresence } from "@/hooks/useMatchPresence";
 import { toast } from "@/hooks/use-toast";
 
 type Mode = "bot" | "local" | "online";
@@ -114,6 +115,15 @@ export default function PoolMatch() {
   const [online, setOnline] = useState<OnlineMeta | null>(null);
   const [loadingOnline, setLoadingOnline] = useState(mode === "online");
   const finalizingRef = useRef(false);
+
+  // Auto-win if opponent disconnects for 15s+ (refresh-tolerant)
+  useMatchPresence({
+    matchId: online?.matchId ?? null,
+    userId: user?.id ?? null,
+    opponentId: online?.opponentId ?? null,
+    active: mode === "online" && online?.status === "active",
+    onWin: () => refreshProfile(),
+  });
   const skipNextPushRef = useRef(false);
 
   // Paid bot match support: lock-in bet so winner gets 2x via finalize_match

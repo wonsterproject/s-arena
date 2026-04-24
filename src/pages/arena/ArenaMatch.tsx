@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Coins, Wifi, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useMatchPresence } from "@/hooks/useMatchPresence";
 import { supabase } from "@/integrations/supabase/client";
 import { ArenaScene } from "@/components/arena/ArenaScene";
 import { ArenaHUD } from "@/components/arena/ArenaHUD";
@@ -55,6 +56,15 @@ export default function ArenaMatch() {
   const finalizingRef = useRef(false);
   const [paidBotBet, setPaidBotBet] = useState<number>(0);
   const paidBotFinalizedRef = useRef(false);
+
+  // Auto-win if opponent disconnects for 15s+ (refresh-tolerant)
+  useMatchPresence({
+    matchId: online?.matchId ?? null,
+    userId: user?.id ?? null,
+    opponentId: online?.opponentId ?? null,
+    active: mode === "online" && online?.status === "active",
+    onWin: () => refreshProfile(),
+  });
 
   // Load paid bot match bet + fake opponent persona
   useEffect(() => {
