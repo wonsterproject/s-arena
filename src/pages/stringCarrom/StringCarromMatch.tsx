@@ -11,6 +11,7 @@ import { useStringCarromSounds } from "@/game/stringCarrom/sounds";
 import GameTopBar from "@/components/game/GameTopBar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useMatchPresence } from "@/hooks/useMatchPresence";
 import { toast } from "@/hooks/use-toast";
 
 type Mode = "bot" | "local" | "online";

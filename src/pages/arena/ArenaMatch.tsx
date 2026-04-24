@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Coins, Wifi, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useMatchPresence } from "@/hooks/useMatchPresence";
 import { supabase } from "@/integrations/supabase/client";
 import { ArenaScene } from "@/components/arena/ArenaScene";
 import { ArenaHUD } from "@/components/arena/ArenaHUD";
