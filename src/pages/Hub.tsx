@@ -5,6 +5,7 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import OnlinePlayersPanel from "@/components/hub/OnlinePlayersPanel";
 import ReferralCard from "@/components/hub/ReferralCard";
 import FriendsPanel from "@/components/hub/FriendsPanel";
+import MatchInvitesPanel from "@/components/hub/MatchInvitesPanel";
 import WhatsAppFloat from "@/components/WhatsAppFloat";
 
 interface GameCard {
@@ -149,6 +150,9 @@ export default function Hub() {
             </button>
           ))}
         </section>
+
+        {/* Incoming match challenges */}
+        <MatchInvitesPanel />
 
         {/* Friends + Referral + Online Players */}
         <section className="grid lg:grid-cols-2 gap-4 mb-4">
