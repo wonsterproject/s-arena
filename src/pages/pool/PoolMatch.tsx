@@ -248,8 +248,10 @@ export default function PoolMatch() {
 
   const pushState = useCallback(async (next: MatchState) => {
     if (mode !== "online" || !onlineMatchId) return;
+    const at = Date.now();
+    lastRemoteAtRef.current = at;
     await supabase.from("matches")
-      .update({ state: next as any, updated_at: new Date().toISOString() })
+      .update({ state: next as any, updated_at: new Date(at).toISOString() })
       .eq("id", onlineMatchId);
   }, [mode, onlineMatchId]);
 
