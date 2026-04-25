@@ -492,6 +492,15 @@ export default function CarromMatch() {
           </div>
         </div>
       )}
+
+      {showVS && online && (
+        <PreMatchVS
+          myName={myDisplayName}
+          opponentName={online.opponentName}
+          bet={online.betAmount}
+          onDone={() => setShowVS(false)}
+        />
+      )}
     </main>
   );
 }
