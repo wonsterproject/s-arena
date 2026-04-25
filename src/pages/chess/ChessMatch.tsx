@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMatchPresence } from "@/hooks/useMatchPresence";
 import { finalizePaidBotMatch } from "@/game/finalizePaidBotMatch";
+import PreMatchVS from "@/components/match/PreMatchVS";
 
 type Mode = "bot" | "local" | "online";
 
