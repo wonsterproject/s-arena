@@ -127,6 +127,13 @@ export default function PoolMatch() {
     onWin: () => refreshProfile(),
   });
   const skipNextPushRef = useRef(false);
+  const channelRef = useRef<any>(null);
+  const lastBroadcastAt = useRef(0);
+  const lastRemoteAtRef = useRef(0);
+
+  // Pre-match VS animation control: shown once per match when status flips to active.
+  const [showVS, setShowVS] = useState(false);
+  const vsShownRef = useRef(false);
 
   // Paid bot match support: lock-in bet so winner gets 2x via finalize_match
   const [paidBotBet, setPaidBotBet] = useState<number>(0);
