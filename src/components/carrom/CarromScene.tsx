@@ -102,6 +102,38 @@ function SceneInner({ onReady, onShotResolved, currentSide, shooting, interactiv
       id: p.id, color: p.color, pocketed: p.pocketed,
       x: p.body.position.x, z: p.body.position.z,
     }));
+    // Apply opponent's shot remotely: same physics call as local shoot,
+    // but resolution is suppressed (the shooter is authoritative).
+    (api as any).applyRemoteShot = (sx: number, sz: number, dx: number, dz: number, p: number) => {
+      phys.setStrikerPosition(sx, sz);
+      phys.resetShotLog();
+      shotPocketedIds.current.clear();
+      shotStrikerPocketed.current = false;
+      phys.shoot(dx, dz, p);
+      shotInProgress.current = true;
+      shotTimer.current = 0;
+      restCounter.current = 0;
+      (shotInProgress as any)._suppressResolve = true;
+    };
+    // Apply authoritative state snapshot from the shooter at end of shot.
+    (api as any).applyPiecesSnapshot = (snap: Array<{ id: string; pocketed: boolean; x: number; z: number }>) => {
+      for (const s of snap) {
+        const p = phys.pieces.find(pp => pp.id === s.id);
+        if (!p) continue;
+        p.pocketed = s.pocketed;
+        if (s.pocketed) {
+          p.body.position.set(s.x, -10, s.z); // hide pocketed
+          p.body.velocity.set(0, 0, 0);
+          p.body.angularVelocity.set(0, 0, 0);
+          p.body.sleep();
+        } else {
+          p.body.position.set(s.x, PIECE.height / 2 + 0.01, s.z);
+          p.body.velocity.set(0, 0, 0);
+          p.body.angularVelocity.set(0, 0, 0);
+          p.body.wakeUp();
+        }
+      }
+    };
     onReady(api);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
