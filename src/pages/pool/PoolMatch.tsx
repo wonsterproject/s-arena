@@ -10,6 +10,7 @@ import { TABLE, BALL, POCKETS, PHYS } from "@/game/pool/constants";
 import GameTopBar from "@/components/game/GameTopBar";
 import VerticalPowerStrip from "@/components/game/VerticalPowerStrip";
 import LandscapeGate from "@/components/pool/LandscapeGate";
+import PreMatchVS from "@/components/match/PreMatchVS";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMatchPresence } from "@/hooks/useMatchPresence";
