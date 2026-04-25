@@ -42,6 +42,8 @@ export default function ChessMatch() {
   const [online, setOnline] = useState<OnlineMeta | null>(null);
   const [loadingOnline, setLoadingOnline] = useState(mode === "online");
   const finalizingRef = useRef(false);
+  const [showVS, setShowVS] = useState(false);
+  const vsShownRef = useRef(false);
 
   // Auto-win if opponent disconnects for 15s+ (refresh-tolerant)
   useMatchPresence({
