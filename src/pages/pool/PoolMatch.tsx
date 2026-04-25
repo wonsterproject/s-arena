@@ -10,6 +10,7 @@ import { TABLE, BALL, POCKETS, PHYS } from "@/game/pool/constants";
 import GameTopBar from "@/components/game/GameTopBar";
 import VerticalPowerStrip from "@/components/game/VerticalPowerStrip";
 import LandscapeGate from "@/components/pool/LandscapeGate";
+import PreMatchVS from "@/components/match/PreMatchVS";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMatchPresence } from "@/hooks/useMatchPresence";
@@ -126,6 +127,13 @@ export default function PoolMatch() {
     onWin: () => refreshProfile(),
   });
   const skipNextPushRef = useRef(false);
+  const channelRef = useRef<any>(null);
+  const lastBroadcastAt = useRef(0);
+  const lastRemoteAtRef = useRef(0);
+
+  // Pre-match VS animation control: shown once per match when status flips to active.
+  const [showVS, setShowVS] = useState(false);
+  const vsShownRef = useRef(false);
 
   // Paid bot match support: lock-in bet so winner gets 2x via finalize_match
   const [paidBotBet, setPaidBotBet] = useState<number>(0);
@@ -192,27 +200,58 @@ export default function PoolMatch() {
     };
     void init();
 
-    const ch = supabase.channel(`pool-match-${onlineMatchId}`)
+    const ch = supabase.channel(`pool-match-${onlineMatchId}`, { config: { broadcast: { self: false } } })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${onlineMatchId}` },
         (payload) => {
           const newRow: any = payload.new;
-          if (newRow.state && newRow.state.balls) {
+          const updatedAtMs = newRow.updated_at ? new Date(newRow.updated_at).getTime() : 0;
+          if (newRow.state && newRow.state.balls && updatedAtMs > lastRemoteAtRef.current) {
+            lastRemoteAtRef.current = updatedAtMs;
             skipNextPushRef.current = true;
             const ns = newRow.state as MatchState;
             setMatch(ns);
             setAnimBalls(ns.balls.map(b => ({ ...b })));
           }
           if (newRow.status) {
-            setOnline(p => p ? { ...p, status: newRow.status as OnlineMeta["status"] } : p);
+            setOnline(p => {
+              if (!p) return p;
+              // Trigger VS animation when match flips to active for the first time.
+              if (p.status !== "active" && newRow.status === "active" && !vsShownRef.current) {
+                vsShownRef.current = true;
+                setShowVS(true);
+              }
+              return { ...p, status: newRow.status as OnlineMeta["status"] };
+            });
           }
-        }).subscribe();
-    return () => { cancelled = true; supabase.removeChannel(ch); };
+        })
+      // Realtime broadcast: intermediate-frame ball positions during opponent's shot.
+      .on("broadcast", { event: "frame" }, ({ payload }) => {
+        if (!payload || !Array.isArray(payload.balls)) return;
+        const at = typeof payload.at === "number" ? payload.at : Date.now();
+        if (at <= lastRemoteAtRef.current) return;
+        lastRemoteAtRef.current = at;
+        setAnimBalls(payload.balls as Ball[]);
+      })
+      .subscribe();
+    channelRef.current = ch;
+    return () => { cancelled = true; supabase.removeChannel(ch); channelRef.current = null; };
   }, [mode, onlineMatchId, user, navigate]);
+
+  // Show VS once after initial load if status was already active and we haven't shown it yet.
+  useEffect(() => {
+    if (mode !== "online" || !online) return;
+    if (online.status === "active" && !vsShownRef.current) {
+      vsShownRef.current = true;
+      setShowVS(true);
+    }
+  }, [mode, online]);
 
   const pushState = useCallback(async (next: MatchState) => {
     if (mode !== "online" || !onlineMatchId) return;
+    const at = Date.now();
+    lastRemoteAtRef.current = at;
     await supabase.from("matches")
-      .update({ state: next as any, updated_at: new Date().toISOString() })
+      .update({ state: next as any, updated_at: new Date(at).toISOString() })
       .eq("id", onlineMatchId);
   }, [mode, onlineMatchId]);
 
@@ -292,6 +331,21 @@ export default function PoolMatch() {
         if (moving) stillMoving = true;
       }
       setAnimBalls(working.map(b => ({ ...b })));
+      // Stream intermediate frames to the opponent so they see the balls move
+      // in realtime, not just teleport to the final settled state.
+      if (mode === "online" && online?.status === "active" && channelRef.current) {
+        const now = performance.now();
+        if (now - lastBroadcastAt.current > 60) {
+          lastBroadcastAt.current = now;
+          const at = Date.now();
+          lastRemoteAtRef.current = at;
+          void channelRef.current.send({
+            type: "broadcast",
+            event: "frame",
+            payload: { at, balls: working.map(b => ({ ...b })) },
+          });
+        }
+      }
       frameCount++;
       if (stillMoving && frameCount < maxFrames) {
         animRef.current = requestAnimationFrame(tick);
@@ -506,6 +560,15 @@ export default function PoolMatch() {
           </div>
         )}
       </div>
+
+      {showVS && online && (
+        <PreMatchVS
+          myName={myDisplayName}
+          opponentName={online.opponentName}
+          bet={online.betAmount}
+          onDone={() => setShowVS(false)}
+        />
+      )}
     </main>
   );
 }

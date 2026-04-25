@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMatchPresence } from "@/hooks/useMatchPresence";
 import { finalizePaidBotMatch } from "@/game/finalizePaidBotMatch";
+import PreMatchVS from "@/components/match/PreMatchVS";
 
 type Mode = "bot" | "local" | "online";
 
@@ -41,6 +42,8 @@ export default function ChessMatch() {
   const [online, setOnline] = useState<OnlineMeta | null>(null);
   const [loadingOnline, setLoadingOnline] = useState(mode === "online");
   const finalizingRef = useRef(false);
+  const [showVS, setShowVS] = useState(false);
+  const vsShownRef = useRef(false);
 
   // Auto-win if opponent disconnects for 15s+ (refresh-tolerant)
   useMatchPresence({
@@ -163,7 +166,14 @@ export default function ChessMatch() {
             setState(newRow.state as GameState);
           }
           if (newRow.status) {
-            setOnline((p) => p ? { ...p, status: newRow.status as OnlineMeta["status"] } : p);
+            setOnline((p) => {
+              if (!p) return p;
+              if (p.status !== "active" && newRow.status === "active" && !vsShownRef.current) {
+                vsShownRef.current = true;
+                setShowVS(true);
+              }
+              return { ...p, status: newRow.status as OnlineMeta["status"] };
+            });
           }
         },
       )
