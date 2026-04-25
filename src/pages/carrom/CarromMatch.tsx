@@ -235,6 +235,14 @@ export default function CarromMatch() {
     apiRef.current.setStrikerPosition(sx, sz);
     setShooting(true);
     playSound("strike");
+    // Broadcast my shot params so the opponent's scene re-simulates it for animation.
+    if (mode === "online" && online?.status === "active" && channelRef.current) {
+      void channelRef.current.send({
+        type: "broadcast",
+        event: "shot",
+        payload: { sx, sz, dx: dirX, dz: dirZ, p: power },
+      });
+    }
     apiRef.current.shoot(dirX, dirZ, power);
   };
 
