@@ -84,6 +84,19 @@ const SlingPuckScene = forwardRef<SCSceneApi, Props>(
     const [, force] = useState(0);
     const ghostRef = useRef(ghost);
     ghostRef.current = ghost;
+    // Refs so the (long-lived) pointer-event listeners always read fresh values
+    // without needing to re-subscribe each render. Re-subscribing on every
+    // physics frame was canceling the user's drag mid-pull.
+    const pucksRef = useRef(pucks);
+    pucksRef.current = pucks;
+    const interactiveRef = useRef(interactive);
+    interactiveRef.current = interactive;
+    const mySideRef = useRef(mySide);
+    mySideRef.current = mySide;
+    const onSlingRef = useRef(onSling);
+    onSlingRef.current = onSling;
+    const sizeRef = useRef(size);
+    sizeRef.current = size;
 
     useImperativeHandle(ref, () => ({
       reset: () => { dragRef.current = null; force(n => n + 1); }
