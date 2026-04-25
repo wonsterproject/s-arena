@@ -329,6 +329,21 @@ export default function PoolMatch() {
         if (moving) stillMoving = true;
       }
       setAnimBalls(working.map(b => ({ ...b })));
+      // Stream intermediate frames to the opponent so they see the balls move
+      // in realtime, not just teleport to the final settled state.
+      if (mode === "online" && online?.status === "active" && channelRef.current) {
+        const now = performance.now();
+        if (now - lastBroadcastAt.current > 60) {
+          lastBroadcastAt.current = now;
+          const at = Date.now();
+          lastRemoteAtRef.current = at;
+          void channelRef.current.send({
+            type: "broadcast",
+            event: "frame",
+            payload: { at, balls: working.map(b => ({ ...b })) },
+          });
+        }
+      }
       frameCount++;
       if (stillMoving && frameCount < maxFrames) {
         animRef.current = requestAnimationFrame(tick);
