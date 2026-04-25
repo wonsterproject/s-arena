@@ -64,6 +64,9 @@ export default function CarromMatch() {
     onWin: () => refreshProfile(),
   });
   const skipNextPushRef = useRef(false);
+  const channelRef = useRef<any>(null);
+  const [showVS, setShowVS] = useState(false);
+  const vsShownRef = useRef(false);
   const [paidBotBet, setPaidBotBet] = useState<number>(0);
   const [isFakeUserMatch, setIsFakeUserMatch] = useState(false);
   const paidBotFinalizedRef = useRef(false);
