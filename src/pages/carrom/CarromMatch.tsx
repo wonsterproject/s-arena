@@ -7,6 +7,7 @@ import { planBotShot, type Difficulty } from "@/game/carrom/bot";
 import { BOARD, type PieceColor } from "@/game/carrom/constants";
 import type { MatchState } from "@/game/carrom/types";
 import GameTopBar from "@/components/game/GameTopBar";
+import PreMatchVS from "@/components/match/PreMatchVS";
 import { useCarromSounds } from "@/game/carrom/useCarromSounds";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
