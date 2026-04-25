@@ -106,20 +106,50 @@ export default function CarromMatch() {
     };
     void init();
 
-    const ch = supabase.channel(`carrom-match-${onlineMatchId}`)
+    const ch = supabase.channel(`carrom-match-${onlineMatchId}`, { config: { broadcast: { self: false } } })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${onlineMatchId}` },
         (payload) => {
           const newRow: any = payload.new;
           if (newRow.state && newRow.state.pieces) {
             skipNextPushRef.current = true;
             setMatch(newRow.state as MatchState);
-            // Snap visual pieces to authoritative state
-            setTimeout(() => apiRef.current?.respawnQueen?.(), 0);
+            // Sync the 3D scene's pieces to the authoritative state from the shooter.
+            const snap = (newRow.state.pieces as any[]).map((p: any) => ({
+              id: p.id, pocketed: p.pocketed, x: p.x ?? 0, z: p.z ?? 0,
+            }));
+            setTimeout(() => (apiRef.current as any)?.applyPiecesSnapshot?.(snap), 0);
           }
-          if (newRow.status === "finished") setOnline(p => p ? { ...p, status: "finished" } : p);
-        }).subscribe();
-    return () => { cancelled = true; supabase.removeChannel(ch); };
-  }, [mode, onlineMatchId, user, navigate]);
+          if (newRow.status) {
+            setOnline(p => {
+              if (!p) return p;
+              if (p.status !== "active" && newRow.status === "active" && !vsShownRef.current) {
+                vsShownRef.current = true;
+                setShowVS(true);
+              }
+              return { ...p, status: newRow.status as OnlineMeta["status"] };
+            });
+          }
+        })
+      // Realtime broadcast: opponent's striker shot params — re-simulate locally for animation.
+      .on("broadcast", { event: "shot" }, ({ payload }) => {
+        if (!payload) return;
+        const { sx, sz, dx, dz, p } = payload as { sx: number; sz: number; dx: number; dz: number; p: number };
+        (apiRef.current as any)?.applyRemoteShot?.(sx, sz, dx, dz, p);
+        playSound("strike");
+      })
+      .subscribe();
+    channelRef.current = ch;
+    return () => { cancelled = true; supabase.removeChannel(ch); channelRef.current = null; };
+  }, [mode, onlineMatchId, user, navigate, playSound]);
+
+  // Show VS once after initial load if status was already active.
+  useEffect(() => {
+    if (mode !== "online" || !online) return;
+    if (online.status === "active" && !vsShownRef.current) {
+      vsShownRef.current = true;
+      setShowVS(true);
+    }
+  }, [mode, online]);
 
   const pushState = useCallback(async (next: MatchState) => {
     if (mode !== "online" || !onlineMatchId) return;
