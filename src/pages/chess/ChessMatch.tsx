@@ -166,7 +166,14 @@ export default function ChessMatch() {
             setState(newRow.state as GameState);
           }
           if (newRow.status) {
-            setOnline((p) => p ? { ...p, status: newRow.status as OnlineMeta["status"] } : p);
+            setOnline((p) => {
+              if (!p) return p;
+              if (p.status !== "active" && newRow.status === "active" && !vsShownRef.current) {
+                vsShownRef.current = true;
+                setShowVS(true);
+              }
+              return { ...p, status: newRow.status as OnlineMeta["status"] };
+            });
           }
         },
       )
