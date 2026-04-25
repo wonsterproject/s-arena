@@ -417,16 +417,19 @@ const SlingPuckScene = forwardRef<SCSceneApi, Props>(
       };
 
       const onDown = (e: PointerEvent) => {
-        if (!interactive) return;
+        if (!interactiveRef.current) return;
+        const sz = sizeRef.current;
+        const mySideNow = mySideRef.current;
+        const pucksNow = pucksRef.current;
         const { px, py } = local(e);
-        const wp = c2w(px, py, size.w, size.h);
+        const wp = c2w(px, py, sz.w, sz.h);
         // Find nearest puck on MY side (any color — own or opponent's) within grab radius.
         let best: Puck | null = null;
         let bestD = Infinity;
-        const grabR = PUCK.radius * 1.8;
-        for (const p of pucks) {
+        const grabR = PUCK.radius * 2.2;
+        for (const p of pucksNow) {
           if (!p.alive) continue;
-          const onMySide = mySide === 0 ? p.y < 0 : p.y > 0;
+          const onMySide = mySideNow === 0 ? p.y < 0 : p.y > 0;
           if (!onMySide) continue;
           const d = Math.hypot(wp.x - p.x, wp.y - p.y);
           if (d < grabR && d < bestD) { bestD = d; best = p; }
@@ -449,17 +452,19 @@ const SlingPuckScene = forwardRef<SCSceneApi, Props>(
       const onMove = (e: PointerEvent) => {
         const drag = dragRef.current;
         if (!drag) return;
+        const sz = sizeRef.current;
+        const mySideNow = mySideRef.current;
         const { px, py } = local(e);
-        const wp = c2w(px, py, size.w, size.h);
+        const wp = c2w(px, py, sz.w, sz.h);
         const r = PUCK.radius;
-        const slingY = mySide === 0 ? SLING.anchorYA : SLING.anchorYB;
+        const slingY = mySideNow === 0 ? SLING.anchorYA : SLING.anchorYB;
 
         // Clamp to own half + within board walls.
         const clampToOwnHalf = (cx: number, cy: number) => {
           let nx = cx, ny = cy;
           if (nx < -BOARD.halfW + r) nx = -BOARD.halfW + r;
           if (nx >  BOARD.halfW - r) nx =  BOARD.halfW - r;
-          if (mySide === 0) {
+          if (mySideNow === 0) {
             if (ny > -r) ny = -r;
             if (ny < -BOARD.halfH + r) ny = -BOARD.halfH + r;
           } else {
@@ -477,12 +482,12 @@ const SlingPuckScene = forwardRef<SCSceneApi, Props>(
           drag.curPx = nx;
           drag.curPy = ny;
           // Detect contact with the sling band line.
-          const reached = mySide === 0
-            ? (drag.curPy <= slingY + r)   // bottom: moving DOWN toward y = -0.46
-            : (drag.curPy >= slingY - r);  // top:    moving UP   toward y =  0.46
+          const reached = mySideNow === 0
+            ? (drag.curPy <= slingY + r)   // bottom: moving DOWN toward y = -0.30
+            : (drag.curPy >= slingY - r);  // top:    moving UP   toward y =  0.30
           if (reached) {
             // Snap puck so it just touches the band line, then attach.
-            drag.curPy = mySide === 0 ? slingY + r : slingY - r;
+            drag.curPy = mySideNow === 0 ? slingY + r : slingY - r;
             drag.phase = "attached";
             drag.anchorX = drag.curPx;
             drag.anchorY = drag.curPy;
@@ -491,8 +496,8 @@ const SlingPuckScene = forwardRef<SCSceneApi, Props>(
           // Attached — pull BACK only (toward baseline).
           let cx = wp.x + drag.offX;
           let cy = wp.y + drag.offY;
-          if (mySide === 0 && cy > drag.anchorY) cy = drag.anchorY;
-          if (mySide === 1 && cy < drag.anchorY) cy = drag.anchorY;
+          if (mySideNow === 0 && cy > drag.anchorY) cy = drag.anchorY;
+          if (mySideNow === 1 && cy < drag.anchorY) cy = drag.anchorY;
           // Cap pull length from anchor.
           const dx = cx - drag.anchorX;
           const dy = cy - drag.anchorY;
@@ -502,10 +507,10 @@ const SlingPuckScene = forwardRef<SCSceneApi, Props>(
             cx = drag.anchorX + (dx / len) * maxPull;
             cy = drag.anchorY + (dy / len) * maxPull;
           }
-          // Keep horizontally within board; vertically allow up to wall, but not past anchor toward center.
+          // Keep horizontally within board; vertically allow up to baseline.
           if (cx < -BOARD.halfW + r) cx = -BOARD.halfW + r;
           if (cx >  BOARD.halfW - r) cx =  BOARD.halfW - r;
-          if (mySide === 0) {
+          if (mySideNow === 0) {
             if (cy < -BOARD.halfH + r) cy = -BOARD.halfH + r;
           } else {
             if (cy >  BOARD.halfH - r) cy =  BOARD.halfH - r;
@@ -530,7 +535,7 @@ const SlingPuckScene = forwardRef<SCSceneApi, Props>(
         if (power < 0.08 || pullLen < 0.001) return;
         const dirX = -dx / pullLen;
         const dirY = -dy / pullLen;
-        onSling(drag.puckId, drag.curPx, drag.curPy, dirX, dirY, power);
+        onSlingRef.current(drag.puckId, drag.curPx, drag.curPy, dirX, dirY, power);
       };
 
       cvs.addEventListener("pointerdown", onDown);
@@ -543,7 +548,10 @@ const SlingPuckScene = forwardRef<SCSceneApi, Props>(
         cvs.removeEventListener("pointerup", onUp);
         cvs.removeEventListener("pointercancel", onUp);
       };
-    }, [size, interactive, turn, mySide, pucks, onSling]);
+      // Empty deps — refs above always carry latest values, so the listener
+      // never needs to re-subscribe (which used to cancel drags mid-pull).
+       
+    }, []);
 
     return (
       <div className="w-full flex justify-center">
