@@ -200,22 +200,51 @@ export default function PoolMatch() {
     };
     void init();
 
-    const ch = supabase.channel(`pool-match-${onlineMatchId}`)
+    const ch = supabase.channel(`pool-match-${onlineMatchId}`, { config: { broadcast: { self: false } } })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${onlineMatchId}` },
         (payload) => {
           const newRow: any = payload.new;
-          if (newRow.state && newRow.state.balls) {
+          const updatedAtMs = newRow.updated_at ? new Date(newRow.updated_at).getTime() : 0;
+          if (newRow.state && newRow.state.balls && updatedAtMs > lastRemoteAtRef.current) {
+            lastRemoteAtRef.current = updatedAtMs;
             skipNextPushRef.current = true;
             const ns = newRow.state as MatchState;
             setMatch(ns);
             setAnimBalls(ns.balls.map(b => ({ ...b })));
           }
           if (newRow.status) {
-            setOnline(p => p ? { ...p, status: newRow.status as OnlineMeta["status"] } : p);
+            setOnline(p => {
+              if (!p) return p;
+              // Trigger VS animation when match flips to active for the first time.
+              if (p.status !== "active" && newRow.status === "active" && !vsShownRef.current) {
+                vsShownRef.current = true;
+                setShowVS(true);
+              }
+              return { ...p, status: newRow.status as OnlineMeta["status"] };
+            });
           }
-        }).subscribe();
-    return () => { cancelled = true; supabase.removeChannel(ch); };
+        })
+      // Realtime broadcast: intermediate-frame ball positions during opponent's shot.
+      .on("broadcast", { event: "frame" }, ({ payload }) => {
+        if (!payload || !Array.isArray(payload.balls)) return;
+        const at = typeof payload.at === "number" ? payload.at : Date.now();
+        if (at <= lastRemoteAtRef.current) return;
+        lastRemoteAtRef.current = at;
+        setAnimBalls(payload.balls as Ball[]);
+      })
+      .subscribe();
+    channelRef.current = ch;
+    return () => { cancelled = true; supabase.removeChannel(ch); channelRef.current = null; };
   }, [mode, onlineMatchId, user, navigate]);
+
+  // Show VS once after initial load if status was already active and we haven't shown it yet.
+  useEffect(() => {
+    if (mode !== "online" || !online) return;
+    if (online.status === "active" && !vsShownRef.current) {
+      vsShownRef.current = true;
+      setShowVS(true);
+    }
+  }, [mode, online]);
 
   const pushState = useCallback(async (next: MatchState) => {
     if (mode !== "online" || !onlineMatchId) return;
