@@ -22,6 +22,7 @@ import { useSounds } from "@/game/useSounds";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
+import PreMatchVS from "@/components/match/PreMatchVS";
 
 interface SeatInfo {
   color: PlayerColor;
@@ -97,6 +98,9 @@ export default function Match() {
   const movingRef = useRef(false);
   const lastVersionApplied = useRef<number>(0);
   const committingRef = useRef(false);
+  // Pre-match VS animation: shown once when status flips waiting → active.
+  const [showVS, setShowVS] = useState(false);
+  const vsShownRef = useRef(false);
 
   const play = useSounds(soundOn);
 
@@ -162,7 +166,13 @@ export default function Match() {
         { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${matchId}` },
         (payload) => {
           const newRow: any = payload.new;
-          if (newRow.status !== matchStatus) setMatchStatus(newRow.status);
+          if (newRow.status !== matchStatus) {
+            if (matchStatus === "waiting" && newRow.status === "active" && !vsShownRef.current) {
+              vsShownRef.current = true;
+              setShowVS(true);
+            }
+            setMatchStatus(newRow.status);
+          }
           const incoming = newRow.state as GameState | null;
           if (incoming && incoming.version && incoming.version > lastVersionApplied.current && !movingRef.current) {
             lastVersionApplied.current = incoming.version;
@@ -644,6 +654,16 @@ export default function Match() {
       {matchId && seats && seats.some((s) => !s.isBot && s.userId !== user?.id) && (
         <MatchChat matchId={matchId} />
       )}
+      {showVS && mySeat && (() => {
+        const opp = seats?.find((s) => !s.isBot && s.userId !== user?.id);
+        return (
+          <PreMatchVS
+            myName={profile?.display_name || profile?.username || mySeat.name}
+            opponentName={opp?.name ?? "Opponent"}
+            onDone={() => setShowVS(false)}
+          />
+        );
+      })()}
     </main>
   );
 }

@@ -9,6 +9,7 @@ import { SLING } from "@/game/stringCarrom/constants";
 import type { MatchState } from "@/game/stringCarrom/types";
 import { useStringCarromSounds } from "@/game/stringCarrom/sounds";
 import GameTopBar from "@/components/game/GameTopBar";
+import PreMatchVS from "@/components/match/PreMatchVS";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMatchPresence } from "@/hooks/useMatchPresence";
@@ -73,6 +74,9 @@ export default function StringCarromMatch() {
   const [isFakeUserMatch, setIsFakeUserMatch] = useState(false);
   const paidBotFinalizedRef = useRef(false);
   const [ghost, setGhost] = useState<React.ComponentProps<typeof StringCarromScene>["ghost"]>(null);
+  // Pre-match VS animation: shown once when status flips waiting → active.
+  const [showVS, setShowVS] = useState(false);
+  const vsShownRef = useRef(false);
 
   // Countdown 3..2..1..GO before play starts.
   const [countdown, setCountdown] = useState(3);
@@ -324,7 +328,13 @@ export default function StringCarromMatch() {
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${onlineMatchId}` }, (payload) => {
         const newRow: any = payload.new;
         const nextStatus = (newRow.status ?? "waiting") as OnlineMeta["status"];
-        setOnline((prev) => prev ? { ...prev, status: nextStatus } : prev);
+        setOnline((prev) => {
+          if (prev && prev.status !== "active" && nextStatus === "active" && !vsShownRef.current) {
+            vsShownRef.current = true;
+            setShowVS(true);
+          }
+          return prev ? { ...prev, status: nextStatus } : prev;
+        });
 
         if (nextStatus === "active") {
           setCountdown(3);
@@ -584,6 +594,15 @@ export default function StringCarromMatch() {
           </div>
         )}
       </div>
+
+      {showVS && online && (
+        <PreMatchVS
+          myName={profile?.display_name || profile?.username || "You"}
+          opponentName={online.opponentName}
+          bet={online.betAmount}
+          onDone={() => setShowVS(false)}
+        />
+      )}
     </main>
   );
 }
