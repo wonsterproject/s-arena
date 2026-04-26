@@ -9,6 +9,7 @@ import { SLING } from "@/game/stringCarrom/constants";
 import type { MatchState } from "@/game/stringCarrom/types";
 import { useStringCarromSounds } from "@/game/stringCarrom/sounds";
 import GameTopBar from "@/components/game/GameTopBar";
+import PreMatchVS from "@/components/match/PreMatchVS";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMatchPresence } from "@/hooks/useMatchPresence";
@@ -73,6 +74,9 @@ export default function StringCarromMatch() {
   const [isFakeUserMatch, setIsFakeUserMatch] = useState(false);
   const paidBotFinalizedRef = useRef(false);
   const [ghost, setGhost] = useState<React.ComponentProps<typeof StringCarromScene>["ghost"]>(null);
+  // Pre-match VS animation: shown once when status flips waiting → active.
+  const [showVS, setShowVS] = useState(false);
+  const vsShownRef = useRef(false);
 
   // Countdown 3..2..1..GO before play starts.
   const [countdown, setCountdown] = useState(3);
