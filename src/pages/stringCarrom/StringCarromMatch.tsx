@@ -328,7 +328,13 @@ export default function StringCarromMatch() {
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${onlineMatchId}` }, (payload) => {
         const newRow: any = payload.new;
         const nextStatus = (newRow.status ?? "waiting") as OnlineMeta["status"];
-        setOnline((prev) => prev ? { ...prev, status: nextStatus } : prev);
+        setOnline((prev) => {
+          if (prev && prev.status !== "active" && nextStatus === "active" && !vsShownRef.current) {
+            vsShownRef.current = true;
+            setShowVS(true);
+          }
+          return prev ? { ...prev, status: nextStatus } : prev;
+        });
 
         if (nextStatus === "active") {
           setCountdown(3);
