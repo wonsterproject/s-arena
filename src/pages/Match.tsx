@@ -654,6 +654,16 @@ export default function Match() {
       {matchId && seats && seats.some((s) => !s.isBot && s.userId !== user?.id) && (
         <MatchChat matchId={matchId} />
       )}
+      {showVS && mySeat && (() => {
+        const opp = seats?.find((s) => !s.isBot && s.userId !== user?.id);
+        return (
+          <PreMatchVS
+            myName={profile?.display_name || profile?.username || mySeat.name}
+            opponentName={opp?.name ?? "Opponent"}
+            onDone={() => setShowVS(false)}
+          />
+        );
+      })()}
     </main>
   );
 }
