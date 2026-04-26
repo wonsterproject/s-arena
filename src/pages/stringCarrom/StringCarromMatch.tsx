@@ -584,6 +584,15 @@ export default function StringCarromMatch() {
           </div>
         )}
       </div>
+
+      {showVS && online && (
+        <PreMatchVS
+          myName={profile?.display_name || profile?.username || "You"}
+          opponentName={online.opponentName}
+          bet={online.betAmount}
+          onDone={() => setShowVS(false)}
+        />
+      )}
     </main>
   );
 }
